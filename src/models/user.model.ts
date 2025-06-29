@@ -1,3 +1,4 @@
+// src/models/user.model.ts
 import { Schema, model, Document } from "mongoose"
 import bcrypt from "bcryptjs"
 
@@ -7,6 +8,8 @@ export interface UserDocument extends Document {
   id: string
   email: string
   password: string
+  name: string
+  avatar: string
   role: UserRole
   createdAt: Date
   updatedAt: Date
@@ -24,6 +27,16 @@ const userSchema = new Schema<UserDocument>(
       trim: true,
     },
     password: { type: String, required: true, minlength: 8 },
+    name: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+    avatar: {
+      type: String,
+      trim: true,
+      default: "https://default-avatar.png",
+    },
     role: { type: String, enum: ["user", "admin"], default: "user" },
   },
   { timestamps: true }

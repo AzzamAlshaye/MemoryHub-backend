@@ -37,6 +37,19 @@ export class UserController {
       next(err)
     }
   }
+  /** PUT /users/me – let the logged-in user update their own profile */
+  static async updateSelf(
+    req: Request & { user: { id: string } },
+    res: Response,
+    next: NextFunction
+  ) {
+    try {
+      const updated = await UserService.updateSelf(req.user.id, req.body)
+      res.json(updated)
+    } catch (err) {
+      next(err)
+    }
+  }
 
   /** DELETE /users/me – let the logged-in user delete their own account */
   static async deleteSelf(
@@ -45,8 +58,7 @@ export class UserController {
     next: NextFunction
   ) {
     try {
-      const userId = req.user.id
-      await UserService.deleteSelf(userId)
+      await UserService.deleteSelf(req.user.id)
       res.status(204).end()
     } catch (err) {
       next(err)
