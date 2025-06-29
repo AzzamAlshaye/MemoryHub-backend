@@ -1,17 +1,16 @@
 // src/controllers/pin.controller.ts
-import { Request, Response, NextFunction } from "express"
+import { RequestHandler } from "express"
+import { Types } from "mongoose"
 import { PinService } from "../services/pin.service"
 import { GroupService } from "../services/group.service"
 
 export class PinController {
-  // CREATE always allowed, but enforce groupId when privacy==="group"
-  static async create(
-    req: Request & { user?: any },
-    res: Response,
-    next: NextFunction
-  ) {
+  /**
+   * POST /pins
+   */
+  static create: RequestHandler = async (req, res, next) => {
     try {
-      const data = { ...req.body, owner: req.user.id }
+      const data = { ...req.body, owner: (req as any).user.id }
       const pin = await PinService.create(data)
       res.status(201).json(pin)
     } catch (err) {
@@ -19,105 +18,120 @@ export class PinController {
     }
   }
 
-  // GET ALL → only public, your own private, and group-members’ group pins
-  static async getAll(
-    req: Request & { user?: any },
-    res: Response,
-    next: NextFunction
-  ) {
+  /**
+   * GET /pins
+   */
+  static getAll: RequestHandler = async (req, res, next) => {
     try {
       const all = await PinService.getAll()
+      const uid = (req as any).user.id
       const visible = []
+
       for (const pin of all) {
         if (pin.privacy === "public") {
           visible.push(pin)
-        } else if (pin.privacy === "private" && pin.owner.equals(req.user.id)) {
+        } else if (
+          pin.privacy === "private" &&
+          pin.owner.equals(new Types.ObjectId(uid))
+        ) {
           visible.push(pin)
         } else if (pin.privacy === "group") {
           const isMember = await GroupService.isMember(
             pin.groupId!.toString(),
-            req.user.id
+            uid
           )
           if (isMember) visible.push(pin)
         }
       }
+
       res.json(visible)
     } catch (err) {
       next(err)
     }
   }
 
-  // GET ONE → same filtering as above
-  static async getById(
-    req: Request & { user?: any },
-    res: Response,
-    next: NextFunction
-  ) {
+  /**
+   * GET /pins/:id
+   */
+  static getById: RequestHandler = async (req, res, next) => {
     try {
       const pin = await PinService.getById(req.params.id)
-      if (!pin) return res.status(404).end()
+      if (!pin) {
+        res.status(404).end()
+        return
+      }
 
-      const uid = req.user.id
-      if (
+      const uid = (req as any).user.id
+      const allowed =
         pin.privacy === "public" ||
-        (pin.privacy === "private" && pin.owner.equals(uid)) ||
+        (pin.privacy === "private" &&
+          pin.owner.equals(new Types.ObjectId(uid))) ||
         (pin.privacy === "group" &&
           (await GroupService.isMember(pin.groupId!.toString(), uid)))
-      ) {
-        return res.json(pin)
+
+      if (!allowed) {
+        res.status(403).json({ message: "Not authorized to view this pin" })
+        return
       }
 
-      res.status(403).json({ message: "Not authorized to view this pin" })
+      res.json(pin)
     } catch (err) {
       next(err)
     }
   }
 
-  // UPDATE → only owner (private), or any group member (group), never public
-  static async update(
-    req: Request & { user?: any },
-    res: Response,
-    next: NextFunction
-  ) {
+  /**
+   * PUT /pins/:id
+   */
+  static update: RequestHandler = async (req, res, next) => {
     try {
       const pin = await PinService.getById(req.params.id)
-      if (!pin) return res.status(404).end()
+      if (!pin) {
+        res.status(404).end()
+        return
+      }
 
-      const uid = req.user.id
-      if (
-        (pin.privacy === "private" && pin.owner.equals(uid)) ||
+      const uid = (req as any).user.id
+      const canUpdate =
+        (pin.privacy === "private" &&
+          pin.owner.equals(new Types.ObjectId(uid))) ||
         (pin.privacy === "group" &&
           (await GroupService.isMember(pin.groupId!.toString(), uid)))
-      ) {
-        const updated = await PinService.update(req.params.id, req.body)
-        return res.json(updated)
+
+      if (!canUpdate) {
+        res.status(403).json({ message: "Not authorized to update this pin" })
+        return
       }
-      return res
-        .status(403)
-        .json({ message: "Not authorized to update this pin" })
+
+      const updated = await PinService.update(req.params.id, req.body)
+      res.json(updated)
     } catch (err) {
       next(err)
     }
   }
 
-  // DELETE → only owner for private or group; never public
-  static async delete(
-    req: Request & { user?: any },
-    res: Response,
-    next: NextFunction
-  ) {
+  /**
+   * DELETE /pins/:id
+   */
+  static delete: RequestHandler = async (req, res, next) => {
     try {
       const pin = await PinService.getById(req.params.id)
-      if (!pin) return res.status(404).end()
-
-      const uid = req.user.id
-      if (pin.privacy !== "public" && pin.owner.equals(uid)) {
-        await PinService.delete(req.params.id)
-        return res.status(204).end()
+      if (!pin) {
+        res.status(404).end()
+        return
       }
-      return res
-        .status(403)
-        .json({ message: "Not authorized to delete this pin" })
+
+      const uid = (req as any).user.id
+      const canDelete =
+        pin.privacy !== "public" && pin.owner.equals(new Types.ObjectId(uid))
+
+      if (!canDelete) {
+        res.status(403).json({ message: "Not authorized to delete this pin" })
+        return
+      }
+
+      await PinService.delete(req.params.id)
+      res.status(204).end()
     } catch (err) {
       next(err)
     }
