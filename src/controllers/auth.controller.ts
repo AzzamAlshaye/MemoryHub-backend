@@ -36,4 +36,12 @@ export const signin: RequestHandler = async (req, res, next) => {
     next(err)
   }
 }
-
+// handel with signOut function
+export const signout: RequestHandler = (req, res, next) => {
+  try {
+// if success
+    res.status(OK).json({ success: true, message: "Signed out successfully" })
+  } catch (err) {
+    next(err)
+  }
+}
