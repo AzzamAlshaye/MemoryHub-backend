@@ -44,5 +44,5 @@ export const signout: RequestHandler = (req, res, next) => {
     res.status(OK).json({ success: true, message: "Signed out successfully" })
   } catch (err) {
     next(err)
-  }
+}
 }
