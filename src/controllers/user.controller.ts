@@ -1,3 +1,4 @@
+// src/controllers/UserController.ts
 import { Request, Response, NextFunction } from "express"
 import { UserService } from "../services/user.service"
 
@@ -37,6 +38,7 @@ export class UserController {
       next(err)
     }
   }
+
   /** PUT /users/me – let the logged-in user update their own profile */
   static async updateSelf(
     req: Request & { user: { id: string } },

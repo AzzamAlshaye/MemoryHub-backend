@@ -8,13 +8,8 @@ const router = Router()
 // all routes require authentication
 router.use(authenticate)
 
-// admin-only routes to manage other users
-router.get("/", authorize("admin"), UserController.getAll)
-router.get("/:id", authorize("admin"), UserController.getById)
-router.put("/:id", authorize("admin"), UserController.update)
-router.delete("/:id", authorize("admin"), UserController.delete)
-
-// user-self endpoints
+// ─── User-self endpoints ────────────
+// these must come *before* the "/:id" routes
 router.put("/me", (req: Request, res: Response, next: NextFunction) =>
   UserController.updateSelf(
     req as Request & { user: { id: string } },
@@ -30,5 +25,11 @@ router.delete("/me", (req: Request, res: Response, next: NextFunction) =>
     next
   )
 )
+
+// ─── Admin-only routes ───────────────
+router.get("/", authorize("admin"), UserController.getAll)
+router.get("/:id", authorize("admin"), UserController.getById)
+router.put("/:id", authorize("admin"), UserController.update)
+router.delete("/:id", authorize("admin"), UserController.delete)
 
 export default router

@@ -2,44 +2,54 @@
 import { Schema, model, Document, Types } from "mongoose"
 
 export interface PinDocument extends Document {
-  id: string
   title: string
   description?: string
+  privacy: "public" | "private" | "group"
+  location: {
+    lat: number
+    lng: number
+  }
   owner: Types.ObjectId
-  location: { lat: number; lng: number }
-  privacy: "private" | "group" | "public"
   groupId?: Types.ObjectId
-  mediaUrls: string[]
   createdAt: Date
   updatedAt: Date
 }
 
 const pinSchema = new Schema<PinDocument>(
   {
-    id: { type: String, default: () => `pin_${Date.now()}` },
     title: { type: String, required: true },
-    description: String,
-    owner: { type: Schema.Types.ObjectId, ref: "User", required: true },
+    description: { type: String, default: "" },
+    privacy: {
+      type: String,
+      enum: ["public", "private", "group"],
+      required: true,
+    },
+
     location: {
       lat: { type: Number, required: true },
       lng: { type: Number, required: true },
     },
-    privacy: {
-      type: String,
-      enum: ["private", "group", "public"],
-      default: "public",
-    },
+
+    owner: { type: Schema.Types.ObjectId, ref: "User", required: true },
+
     groupId: {
-      // ← only for "group" privacy
       type: Schema.Types.ObjectId,
       ref: "Group",
       required: function () {
-        return this.privacy === "group"
+        // `this` is the document
+        return (this as PinDocument).privacy === "group"
       },
     },
-    mediaUrls: [String],
   },
   { timestamps: true }
 )
+
+// optional: custom error message if someone forgets groupId
+pinSchema.path("groupId").validate(function (value: Types.ObjectId) {
+  if ((this as PinDocument).privacy === "group" && !value) {
+    return false
+  }
+  return true
+}, "groupId is required when privacy is 'group'")
 
 export const PinModel = model<PinDocument>("Pin", pinSchema)
