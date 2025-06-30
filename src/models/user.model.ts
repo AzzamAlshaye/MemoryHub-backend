@@ -14,7 +14,7 @@ export interface UserDocument extends Document {
 }
 // create schems
 const userSchema = new Schema<UserDocument>(
-  {
+{
     id: { 
     type: String,
     default: () => `user_${Date.now()}` 
