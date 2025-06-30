@@ -6,10 +6,12 @@ import morgan from "morgan"
 import logger from "./utils/logger"
 import { dev, port } from "./utils/helpers"
 
-// import authRouter from "./routes/auth.routes"
+import authRouter from "./routes/auth.routes"
 // import userRouter from "./routes/user.routes"
 // import pinRouter from "./routes/pin.routes"
 // import groupRouter from "./routes/group.routes"
+import groupRouter from "./routes/group.routes"
+
 // import reportRouter from "./routes/report.routes"
 
 import { connectDB } from "./config/database"
@@ -33,10 +35,12 @@ app.use(express.json())
 app.use(express.urlencoded({ extended: true }))
 
 // ─── Main Routers ──────────────────────────────────────────────────────────────
-// app.use("/auth", authRouter)
+app.use("/auth", authRouter)
 // app.use("/users", userRouter)
 // app.use("/pins", pinRouter)
 // app.use("/groups", groupRouter)
+app.use("/groups", groupRouter)
+
 // app.use("/reports", reportRouter)
 
 // Health check

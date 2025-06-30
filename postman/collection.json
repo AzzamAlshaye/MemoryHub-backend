@@ -1,1 +1,406 @@
-
+{
+  "info": {
+    "name": "Map Memory API",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "version": {
+      "major": 1,
+      "minor": 0,
+      "patch": 1
+    }
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:3000",
+      "type": "string"
+    },
+    {
+      "key": "token",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Signup",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"user@example.com\",\n  \"password\": \"Password123\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/signup",
+              "host": ["{{base_url}}"],
+              "path": ["auth","signup"]
+            }
+          }
+        },
+        {
+          "name": "Login",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"user@example.com\",\n  \"password\": \"Password123\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/login",
+              "host": ["{{base_url}}"],
+              "path": ["auth","login"]
+            }
+          }
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{base_url}}/auth/logout",
+              "host": ["{{base_url}}"],
+              "path": ["auth","logout"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Users",
+      "item": [
+        {
+          "name": "Get All Users",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/users",
+              "host": ["{{base_url}}"],
+              "path": ["users"]
+            }
+          }
+        },
+        {
+          "name": "Get User by ID",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/users/:id",
+              "host": ["{{base_url}}"],
+              "path": ["users",":id"]
+            }
+          }
+        },
+        {
+          "name": "Update User by ID",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"new@example.com\",\n  \"name\": \"New Name\",\n  \"avatar\": \"https://...\",\n  \"password\": \"NewPass123\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/users/:id",
+              "host": ["{{base_url}}"],
+              "path": ["users",":id"]
+            }
+          }
+        },
+        {
+          "name": "Delete User by ID",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{base_url}}/users/:id",
+              "host": ["{{base_url}}"],
+              "path": ["users",":id"]
+            }
+          }
+        },
+        {
+          "name": "Update Self",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"My New Name\",\n  \"avatar\": \"https://...\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/users/me",
+              "host": ["{{base_url}}"],
+              "path": ["users","me"]
+            }
+          }
+        },
+        {
+          "name": "Delete Self",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{base_url}}/users/me",
+              "host": ["{{base_url}}"],
+              "path": ["users","me"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Pins",
+      "item": [
+        {
+          "name": "Create Pin",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"My Pin\",\n  \"description\": \"...\",\n  \"latitude\": 24.7,\n  \"longitude\": 46.7,\n  \"privacy\": \"public\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/pins",
+              "host": ["{{base_url}}"],
+              "path": ["pins"]
+            }
+          }
+        },
+        {
+          "name": "Get All Pins",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/pins",
+              "host": ["{{base_url}}"],
+              "path": ["pins"]
+            }
+          }
+        },
+        {
+          "name": "Get Pin by ID",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/pins/:id",
+              "host": ["{{base_url}}"],
+              "path": ["pins",":id"]
+            }
+          }
+        },
+        {
+          "name": "Update Pin",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"description\": \"Updated description\",\n  \"privacy\": \"group\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/pins/:id",
+              "host": ["{{base_url}}"],
+              "path": ["pins",":id"]
+            }
+          }
+        },
+        {
+          "name": "Delete Pin",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{base_url}}/pins/:id",
+              "host": ["{{base_url}}"],
+              "path": ["pins",":id"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Comments",
+      "item": [
+        {
+          "name": "Create Comment",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"pin\": \"<pinId>\",\n  \"content\": \"Nice pin!\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/comments",
+              "host": ["{{base_url}}"],
+              "path": ["comments"]
+            }
+          }
+        },
+        {
+          "name": "List Comments by Pin",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/comments/pin/:pinId",
+              "host": ["{{base_url}}"],
+              "path": ["comments","pin",":pinId"]
+            }
+          }
+        },
+        {
+          "name": "Update Comment",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"content\": \"Updated comment\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/comments/:id",
+              "host": ["{{base_url}}"],
+              "path": ["comments",":id"]
+            }
+          }
+        },
+        {
+          "name": "Delete Comment",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{base_url}}/comments/:id",
+              "host": ["{{base_url}}"],
+              "path": ["comments",":id"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Likes",
+      "item": [
+        {
+          "name": "Create Like",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"targetType\": \"pin\",\n  \"targetId\": \"<pinOrCommentId>\",\n  \"type\": \"upvote\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/likes",
+              "host": ["{{base_url}}"],
+              "path": ["likes"]
+            }
+          }
+        },
+        {
+          "name": "List Likes",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/likes/:targetType/:targetId",
+              "host": ["{{base_url}}"],
+              "path": ["likes",":targetType",":targetId"]
+            }
+          }
+        },
+        {
+          "name": "Delete Like",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{base_url}}/likes/:id",
+              "host": ["{{base_url}}"],
+              "path": ["likes",":id"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Reports",
+      "item": [
+        {
+          "name": "Create Report",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"targetType\": \"pin\",\n  \"targetId\": \"<pinOrCommentId>\",\n  \"reason\": \"Inappropriate content\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/reports",
+              "host": ["{{base_url}}"],
+              "path": ["reports"]
+            }
+          }
+        },
+        {
+          "name": "Get All Reports",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/reports",
+              "host": ["{{base_url}}"],
+              "path": ["reports"]
+            }
+          }
+        },
+        {
+          "name": "Update Report Status",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"resolved\",\n  \"resolutionReason\": \"Valid report\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/reports/:id/status",
+              "host": ["{{base_url}}"],
+              "path": ["reports",":id","status"]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
