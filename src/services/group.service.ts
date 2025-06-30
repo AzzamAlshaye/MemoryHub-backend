@@ -1,48 +1,77 @@
+// src/services/group.service.ts
 import crypto from "crypto"
 import { GroupModel, GroupDocument } from "../models/group.model"
+import { Types } from "mongoose"
 
 export class GroupService {
-  // create group
-  static create(data: Partial<GroupDocument>): Promise<GroupDocument> {
-    return GroupModel.create(data)
+  // create group with initial admin/member
+  static async create(
+    data: Partial<GroupDocument>,
+    creatorId: string
+  ): Promise<GroupDocument> {
+    const group = await GroupModel.create({
+      ...data,
+      admins: [new Types.ObjectId(creatorId)],
+      members: [new Types.ObjectId(creatorId)],
+    })
+    return group
   }
 
-  // show all groups
   static getAll(): Promise<GroupDocument[]> {
     return GroupModel.find().exec()
   }
 
-  // get group by id
   static getById(id: string): Promise<GroupDocument | null> {
     return GroupModel.findById(id).exec()
   }
 
-  // update group
-  static update(id: string, update: Partial<GroupDocument>): Promise<GroupDocument | null> {
+  static update(
+    id: string,
+    update: Partial<GroupDocument>
+  ): Promise<GroupDocument | null> {
     return GroupModel.findByIdAndUpdate(id, update, { new: true }).exec()
   }
 
-  // delete group
   static delete(id: string): Promise<GroupDocument | null> {
     return GroupModel.findByIdAndDelete(id).exec()
   }
 
-  // generate invite token and save in group
   static async generateInviteToken(id: string): Promise<GroupDocument | null> {
     const token = crypto.randomBytes(16).toString("hex")
-    return GroupModel.findByIdAndUpdate(id, { inviteToken: token }, { new: true }).exec()
+    return GroupModel.findByIdAndUpdate(
+      id,
+      { inviteToken: token },
+      { new: true }
+    ).exec()
   }
 
-  // add user to members array if not already
-  static async joinGroup(id: string, userId: string): Promise<GroupDocument | null> {
+  static async joinGroup(
+    id: string,
+    userId: string
+  ): Promise<GroupDocument | null> {
     const group = await GroupModel.findById(id)
     if (!group) return null
-
-    if (!group.members.some(memberId => memberId.toString() === userId)) {
-      group.members.push(userId as any)
+    if (!group.members.some((m) => m.toString() === userId)) {
+      group.members.push(new Types.ObjectId(userId))
       await group.save()
     }
-
     return group
+  }
+
+  static async kickMember(
+    groupId: string,
+    memberId: string
+  ): Promise<GroupDocument | null> {
+    const group = await GroupModel.findById(groupId)
+    if (!group) return null
+    group.members = group.members.filter((m) => m.toString() !== memberId)
+    group.admins = group.admins.filter((a) => a.toString() !== memberId)
+    await group.save()
+    return group
+  }
+
+  static async isAdmin(groupId: string, userId: string): Promise<boolean> {
+    const group = await GroupModel.findById(groupId)
+    return !!group && group.admins.some((a) => a.toString() === userId)
   }
 }

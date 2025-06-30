@@ -9,7 +9,6 @@ import { dev, port } from "./utils/helpers"
 import authRouter from "./routes/auth.routes"
 // import userRouter from "./routes/user.routes"
 // import pinRouter from "./routes/pin.routes"
-// import groupRouter from "./routes/group.routes"
 import groupRouter from "./routes/group.routes"
 
 // import reportRouter from "./routes/report.routes"
@@ -38,7 +37,6 @@ app.use(express.urlencoded({ extended: true }))
 app.use("/auth", authRouter)
 // app.use("/users", userRouter)
 // app.use("/pins", pinRouter)
-// app.use("/groups", groupRouter)
 app.use("/groups", groupRouter)
 
 // app.use("/reports", reportRouter)

@@ -4,7 +4,7 @@ import { LikeController } from "../controllers/like.controller"
 
 const router = Router()
 router.use(authenticate)
-
+// routers of likes
 router.post("/", LikeController.create)
 router.get("/:targetType/:targetId", LikeController.list)
 router.delete("/:id", LikeController.delete)

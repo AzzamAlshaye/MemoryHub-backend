@@ -1,8 +1,8 @@
-import { Router } from "express"
+import express from "express"
 import { GroupController } from "../controllers/group.controller"
 import { authenticate } from "../middleware/auth.middleware"
 
-const router = Router()
+const router = express.Router()
 
 router.use(authenticate)
 
