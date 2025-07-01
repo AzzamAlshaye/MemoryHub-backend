@@ -6,13 +6,15 @@ import morgan from "morgan"
 import logger from "./utils/logger"
 import { dev, port } from "./utils/helpers"
 
-// import authRouter from "./routes/auth.routes"
+
+import authRouter from "./routes/auth.routes"
+import groupRouter from "./routes/group.routes"
 import userRouter from "./routes/user.routes"
 import pinRouter from "./routes/pin.routes"
-// import groupRouter from "./routes/group.routes"
 import reportRouter from "./routes/report.routes"
 import commentRouter from "./routes/comment.routes"
-// import likeRouter from "./routes/like.routes"
+import likeRouter from "./routes/like.routes"
+
 
 import { connectDB } from "./config/database"
 import { OK, INTERNAL_SERVER_ERROR } from "./utils/http-status"
@@ -35,13 +37,15 @@ app.use(express.json())
 app.use(express.urlencoded({ extended: true }))
 
 // ─── Main Routers ──────────────────────────────────────────────────────────────
-// app.use("/auth", authRouter)
+
+app.use("/auth", authRouter)
+app.use("/groups", groupRouter)
 app.use("/users", userRouter)
 app.use("/pins", pinRouter)
-// app.use("/groups", groupRouter)
 app.use("/reports", reportRouter)
 app.use("/comments", commentRouter)
-// app.use("/likes", likeRouter)
+app.use("/likes", likeRouter)
+
 
 // Health check
 app.get("/", (_req: Request, res: Response<{ message: string }>) => {
