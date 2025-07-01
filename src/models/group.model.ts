@@ -1,32 +1,42 @@
 import { Schema, model, Document, Types } from "mongoose"
 
-// create interface
 export interface GroupDocument extends Document {
-  id: string
+  _id: Types.ObjectId
   name: string
   description?: string
   avatar?: string
-  members: Types.ObjectId[]
   admins: Types.ObjectId[]
+  members: Types.ObjectId[]
   inviteToken?: string
   createdAt: Date
   updatedAt: Date
+  id: string
 }
 
-// create schema
 const groupSchema = new Schema<GroupDocument>(
   {
-    id: { type: String, default: () => `group_${Date.now()}` },
     name: { type: String, required: true },
-    description: { type: String, trim: true },
-    avatar: { type: String, trim: true },
-    members: [{ type: Schema.Types.ObjectId, ref: "User" }],
+    description: String,
+    avatar: { type: String, default: "" },
     admins: [{ type: Schema.Types.ObjectId, ref: "User", required: true }],
-    inviteToken: { type: String, trim: true },
+    members: [{ type: Schema.Types.ObjectId, ref: "User", required: true }],
+    inviteToken: String,
   },
-  { timestamps: true }
+  {
+    timestamps: true,
+    toJSON: {
+      virtuals: true,
+      transform(doc, ret) {
+        ret.id = ret._id.toHexString()
+        delete ret._id
+        delete ret.__v
+      },
+    },
+  }
 )
 
-groupSchema.index({ inviteToken: 1 })
+groupSchema.virtual("id").get(function (this: GroupDocument) {
+  return this._id.toHexString()
+})
 
 export const GroupModel = model<GroupDocument>("Group", groupSchema)

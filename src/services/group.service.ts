@@ -1,37 +1,34 @@
-// src/services/group.service.ts
 import crypto from "crypto"
 import { GroupModel, GroupDocument } from "../models/group.model"
 import { Types } from "mongoose"
 
 export class GroupService {
-  // create group with initial admin/member
   static async create(
     data: Partial<GroupDocument>,
     creatorId: string
   ): Promise<GroupDocument> {
-    const group = await GroupModel.create({
+    const objId = new Types.ObjectId(creatorId)
+    return GroupModel.create({
       ...data,
-      admins: [new Types.ObjectId(creatorId)],
-      members: [new Types.ObjectId(creatorId)],
+      admins: [objId],
+      members: [objId],
     })
-    return group
   }
 
-  static getAll(): Promise<GroupDocument[]> {
-    return GroupModel.find().exec()
+  static getForUser(userId: string): Promise<GroupDocument[]> {
+    return GroupModel.find({ members: userId }).exec()
   }
-
-  static getById(id: string): Promise<GroupDocument | null> {
+ static getById(id: string): Promise<GroupDocument | null> {
     return GroupModel.findById(id).exec()
   }
-
+// member of group they can update 
   static update(
     id: string,
     update: Partial<GroupDocument>
   ): Promise<GroupDocument | null> {
     return GroupModel.findByIdAndUpdate(id, update, { new: true }).exec()
   }
-
+// delete by id 
   static delete(id: string): Promise<GroupDocument | null> {
     return GroupModel.findByIdAndDelete(id).exec()
   }
@@ -44,7 +41,7 @@ export class GroupService {
       { new: true }
     ).exec()
   }
-
+// join to group
   static async joinGroup(
     id: string,
     userId: string
@@ -70,8 +67,27 @@ export class GroupService {
     return group
   }
 
+  static async promoteMember(
+    groupId: string,
+    memberId: string
+  ): Promise<GroupDocument | null> {
+    const group = await GroupModel.findById(groupId)
+    if (!group) return null
+    if (!group.members.some((m) => m.toString() === memberId)) return null
+    if (!group.admins.some((a) => a.toString() === memberId)) {
+      group.admins.push(new Types.ObjectId(memberId))
+      await group.save()
+    }
+    return group
+  }
+
   static async isAdmin(groupId: string, userId: string): Promise<boolean> {
     const group = await GroupModel.findById(groupId)
     return !!group && group.admins.some((a) => a.toString() === userId)
+  }
+
+  static async isMember(groupId: string, userId: string): Promise<boolean> {
+    const group = await GroupModel.findById(groupId)
+    return !!group && group.members.some((m) => m.toString() === userId)
   }
 }
