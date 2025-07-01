@@ -2,32 +2,33 @@ import { RequestHandler } from "express"
 import { validationResult } from "express-validator"
 import { CREATED, OK } from "../utils/http-status"
 import { AuthService } from "../services/auth.service"
-// handel with signUp function
+
+// handle sign-up
 export const signup: RequestHandler = async (req, res, next) => {
   const errors = validationResult(req)
   if (!errors.isEmpty()) {
     res.status(400).json({ errors: errors.array() })
     return
   }
+
   try {
-    const { token } = await AuthService.signup(
-      req.body.email,
-      req.body.password
-    )
+    const { email, password, name } = req.body
+    const { token } = await AuthService.signup(email, password, name)
     res.status(CREATED).json({ token })
   } catch (err) {
     next(err)
   }
 }
 
-// handel with signIn function
+// handle sign-in
 export const signin: RequestHandler = async (req, res, next) => {
   const errors = validationResult(req)
   if (!errors.isEmpty()) {
     res.status(400).json({ errors: errors.array() })
     return
   }
- try {
+
+  try {
     const { email, password } = req.body
     const { token } = await AuthService.login(email, password)
     res.status(OK).json({ token })
@@ -36,7 +37,7 @@ export const signin: RequestHandler = async (req, res, next) => {
   }
 }
 
-// handel with signOut function
+// handle sign-out
 export const signout: RequestHandler = (req, res, next) => {
   try {
     const authHeader = req.headers.authorization
@@ -44,5 +45,5 @@ export const signout: RequestHandler = (req, res, next) => {
     res.status(OK).json({ success: true, message: "Signed out successfully" })
   } catch (err) {
     next(err)
-}
+  }
 }

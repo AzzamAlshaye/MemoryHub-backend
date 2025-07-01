@@ -18,49 +18,40 @@ export const authenticate = async (
   res: Response,
   next: NextFunction
 ): Promise<void> => {
+  console.log("→ Auth header:", req.headers.authorization)
+
+  const authHeader = req.headers.authorization
+  if (!authHeader?.startsWith("Bearer ")) {
+    return next(new AppError("You are not logged in", UNAUTHORIZED))
+  }
+
+  const token = authHeader.split(" ")[1]
+// check of token
+  let payload: { sub: string }
   try {
-    // get token from header
-    const authHeader = req.headers.authorization
-    if (!authHeader?.startsWith("Bearer ")) {
-      throw new AppError("You are not logged in", UNAUTHORIZED)
-    }
-    const token = authHeader.split(" ")[1]
-    // check of token
-    const decoded = jwt.verify(token, jwtConfig.secret) as {
-      sub: string
-      iat: number
-      exp: number
-    }
-// search of users in model of database
-    const user = await UserModel.findOne({ id: decoded.sub })
-    if (!user) {
-      throw new AppError("User no longer exists", UNAUTHORIZED)
-    }
-    req.user = user
-    next()
+    payload = jwt.verify(token, jwtConfig.secret) as { sub: string }
   } catch (err) {
     if (err instanceof jwt.TokenExpiredError) {
-      next(new AppError("Token has expired", UNAUTHORIZED))
-    } else {
-      next(new AppError("Invalid token", UNAUTHORIZED))
+      return next(new AppError("Token has expired", UNAUTHORIZED))
     }
+    return next(new AppError("Invalid token", UNAUTHORIZED))
   }
+
+  const user = await UserModel.findById(payload.sub)
+  if (!user) {
+    return next(new AppError("User no longer exists", UNAUTHORIZED))
+  }
+  req.user = user
+  next()
 }
 
 export const authorize = (...allowedRoles: UserRole[]) => {
   return (req: Request, res: Response, next: NextFunction): void => {
-    const user = req.user
-    // check if user authorize
-    if (!user) {
+    if (!req.user) {
       return next(new AppError("You are not logged in", UNAUTHORIZED))
     }
-    if (!allowedRoles.includes(user.role)) {
-      return next(
-        new AppError(
-          "You do not have permission to perform this action",
-          FORBIDDEN
-        )
-      )
+    if (!allowedRoles.includes(req.user.role)) {
+      return next(new AppError("You do not have permission", FORBIDDEN))
     }
     next()
   }
