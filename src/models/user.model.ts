@@ -1,24 +1,23 @@
-import { Schema, model, Document } from "mongoose"
+import { Schema, model, Document, Types } from "mongoose"
 import bcrypt from "bcryptjs"
 
 export type UserRole = "user" | "admin"
-// create interface
+
 export interface UserDocument extends Document {
-  id: string
+  _id: Types.ObjectId
   email: string
   password: string
+  name: string
+  avatar?: string
   role: UserRole
   createdAt: Date
   updatedAt: Date
+
   comparePassword(candidate: string): Promise<boolean>
 }
-// create schems
+
 const userSchema = new Schema<UserDocument>(
-{
-    id: { 
-    type: String,
-    default: () => `user_${Date.now()}` 
-},
+  {
     email: {
       type: String,
       required: true,
@@ -27,19 +26,35 @@ const userSchema = new Schema<UserDocument>(
       trim: true,
     },
     password: { type: String, required: true, minlength: 8 },
+    name: { type: String, required: true, trim: true },
+    avatar: { type: String, trim: true },
     role: { type: String, enum: ["user", "admin"], default: "user" },
   },
-  { timestamps: true }
+  {
+    timestamps: true,
+    toJSON: {
+      virtuals: true,
+      transform(doc, ret) {
+        ret.id = ret._id.toString()
+        delete ret._id
+        delete ret.__v
+        delete ret.password
+      },
+    },
+  }
 )
-
-userSchema.pre("save", async function (next) {
+userSchema.virtual("id").get(function (this: UserDocument) {
+  return this._id.toHexString()
+})
+// hash pass
+userSchema.pre<UserDocument>("save", async function (next) {
   if (!this.isModified("password")) return next()
-  this.password = await bcrypt.hash(this.password, 12)
+  this.password = await bcrypt.hash(this.password, 10)
   next()
 })
-// compare password
+// compare pass
 userSchema.methods.comparePassword = function (candidate: string) {
   return bcrypt.compare(candidate, this.password)
 }
-// create model
+
 export const UserModel = model<UserDocument>("User", userSchema)
