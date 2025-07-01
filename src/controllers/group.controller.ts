@@ -1,4 +1,3 @@
-// src/controllers/group.controller.ts
 import { Request, Response, NextFunction } from "express"
 import { GroupService } from "../services/group.service"
 import { AppError } from "../utils/error"
@@ -14,7 +13,7 @@ import { GroupModel } from "../models/group.model"
 type AuthRequest = Request & { user?: { id: string } }
 
 export class GroupController {
-  // only logged-in users can create groups
+  // create group by admin group
   static async create(req: AuthRequest, res: Response, next: NextFunction) {
     try {
       if (!req.user) throw new AppError("Authentication required", UNAUTHORIZED)
@@ -24,7 +23,7 @@ export class GroupController {
       next(err)
     }
   }
-
+// show all group
   static async getAll(req: Request, res: Response, next: NextFunction) {
     try {
       const groups = await GroupService.getAll()
@@ -33,7 +32,7 @@ export class GroupController {
       next(err)
     }
   }
-
+// get group by Id
   static async getById(req: Request, res: Response, next: NextFunction) {
     try {
       const grp = await GroupService.getById(req.params.id)
@@ -43,8 +42,7 @@ export class GroupController {
       next(err)
     }
   }
-
-  // update name or avatar (admin only)
+// update group
   static async update(req: AuthRequest, res: Response, next: NextFunction) {
     try {
       const { id } = req.params
@@ -59,8 +57,6 @@ export class GroupController {
       next(err)
     }
   }
-
-  // kick a member (admin only)
   static async kickMember(req: AuthRequest, res: Response, next: NextFunction) {
     try {
       const { id, memberId } = req.params
@@ -75,8 +71,7 @@ export class GroupController {
       next(err)
     }
   }
-
-  // delete group (admin only)
+// delete group 
   static async delete(req: AuthRequest, res: Response, next: NextFunction) {
     try {
       const { id } = req.params
@@ -91,7 +86,7 @@ export class GroupController {
       next(err)
     }
   }
-
+// invite to group
   static async invite(req: Request, res: Response, next: NextFunction) {
     try {
       const group = await GroupService.generateInviteToken(req.params.id)
@@ -102,7 +97,7 @@ export class GroupController {
       next(err)
     }
   }
-
+// join to group
   static async join(req: AuthRequest, res: Response, next: NextFunction) {
     try {
       const token = String(req.query.token || "")
