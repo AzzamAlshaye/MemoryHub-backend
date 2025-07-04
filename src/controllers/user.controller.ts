@@ -1,4 +1,4 @@
-// src/controllers/UserController.ts
+// src/controllers/user.controller.ts
 import { Request, Response, NextFunction } from "express"
 import { UserService } from "../services/user.service"
 
@@ -34,6 +34,20 @@ export class UserController {
     try {
       await UserService.delete(req.params.id)
       res.status(204).end()
+    } catch (err) {
+      next(err)
+    }
+  }
+
+  /** GET /users/me – let the logged-in user fetch their own profile */
+  static async getSelf(
+    req: Request & { user: { id: string } },
+    res: Response,
+    next: NextFunction
+  ) {
+    try {
+      const me = await UserService.getById(req.user.id)
+      res.json(me)
     } catch (err) {
       next(err)
     }

@@ -18,17 +18,17 @@ export class GroupService {
   static getForUser(userId: string): Promise<GroupDocument[]> {
     return GroupModel.find({ members: userId }).exec()
   }
- static getById(id: string): Promise<GroupDocument | null> {
+  static getById(id: string): Promise<GroupDocument | null> {
     return GroupModel.findById(id).exec()
   }
-// member of group they can update 
+  // member of group they can update
   static update(
     id: string,
     update: Partial<GroupDocument>
   ): Promise<GroupDocument | null> {
     return GroupModel.findByIdAndUpdate(id, update, { new: true }).exec()
   }
-// delete by id 
+  // delete by id
   static delete(id: string): Promise<GroupDocument | null> {
     return GroupModel.findByIdAndDelete(id).exec()
   }
@@ -41,7 +41,7 @@ export class GroupService {
       { new: true }
     ).exec()
   }
-// join to group
+  // join to group
   static async joinGroup(
     id: string,
     userId: string
