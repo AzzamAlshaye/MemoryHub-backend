@@ -1,6 +1,8 @@
+// src/middleware/auth.middleware.ts
 import { Request, Response, NextFunction } from "express"
 import jwt from "jsonwebtoken"
-import { UserModel, UserDocument, UserRole } from "../models/user.model"
+import { Types } from "mongoose"
+import { UserRole } from "../models/user.model"
 import { jwtConfig } from "../config/jwt"
 import { AppError } from "../utils/error"
 import { UNAUTHORIZED, FORBIDDEN } from "../utils/http-status"
@@ -8,28 +10,30 @@ import { UNAUTHORIZED, FORBIDDEN } from "../utils/http-status"
 declare global {
   namespace Express {
     interface Request {
-      user?: UserDocument
+      // now has _id:ObjectId, id:string, role:UserRole
+      user?: { _id: Types.ObjectId; id: string; role: UserRole }
     }
   }
 }
 
-export const authenticate = async (
+export const authenticate = (
   req: Request,
   res: Response,
   next: NextFunction
-): Promise<void> => {
-  console.log("→ Auth header:", req.headers.authorization)
-
+): void => {
   const authHeader = req.headers.authorization
   if (!authHeader?.startsWith("Bearer ")) {
     return next(new AppError("You are not logged in", UNAUTHORIZED))
   }
 
   const token = authHeader.split(" ")[1]
-// check of token
-  let payload: { sub: string }
+  let payload: { sub: string; role: UserRole }
+
   try {
-    payload = jwt.verify(token, jwtConfig.secret) as { sub: string }
+    payload = jwt.verify(token, jwtConfig.secret) as {
+      sub: string
+      role: UserRole
+    }
   } catch (err) {
     if (err instanceof jwt.TokenExpiredError) {
       return next(new AppError("Token has expired", UNAUTHORIZED))
@@ -37,11 +41,12 @@ export const authenticate = async (
     return next(new AppError("Invalid token", UNAUTHORIZED))
   }
 
-  const user = await UserModel.findById(payload.sub)
-  if (!user) {
-    return next(new AppError("User no longer exists", UNAUTHORIZED))
+  // build a stub containing both ObjectId and string ID
+  req.user = {
+    _id: new Types.ObjectId(payload.sub),
+    id: payload.sub,
+    role: payload.role,
   }
-  req.user = user
   next()
 }
 

@@ -5,12 +5,19 @@ import { authenticate, authorize } from "../middleware/auth.middleware"
 
 const router = Router()
 
-// all routes require authentication
 router.use(authenticate)
 
-// ─── User-self endpoints ────────────
-// these must come *before* the "/:id" routes
-router.put("/me", (req: Request, res: Response, next: NextFunction) =>
+// ─── GET /users/me ───────────────────────────────────
+// We cast `req` only when we call the controller.
+router.get("/me", (req, res, next) => {
+  return UserController.getSelf(
+    req as Request & { user: { id: string } },
+    res,
+    next
+  )
+})
+
+router.put("/me", (req, res, next) =>
   UserController.updateSelf(
     req as Request & { user: { id: string } },
     res,
@@ -18,7 +25,7 @@ router.put("/me", (req: Request, res: Response, next: NextFunction) =>
   )
 )
 
-router.delete("/me", (req: Request, res: Response, next: NextFunction) =>
+router.delete("/me", (req, res, next) =>
   UserController.deleteSelf(
     req as Request & { user: { id: string } },
     res,
@@ -26,7 +33,7 @@ router.delete("/me", (req: Request, res: Response, next: NextFunction) =>
   )
 )
 
-// ─── Admin-only routes ───────────────
+// ─── Admin‐only ───────────────────────────
 router.get("/", authorize("admin"), UserController.getAll)
 router.get("/:id", authorize("admin"), UserController.getById)
 router.put("/:id", authorize("admin"), UserController.update)

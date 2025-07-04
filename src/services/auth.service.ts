@@ -1,3 +1,4 @@
+// src/services/auth.service.ts
 import jwt from "jsonwebtoken"
 import { UserModel, UserDocument } from "../models/user.model"
 import { jwtConfig } from "../config/jwt"
@@ -20,16 +21,16 @@ export class AuthService {
       throw new AppError("Email, password and name are required", BAD_REQUEST)
     }
 
-    const existing = await UserModel.findOne({ email })
-    if (existing) {
+    if (await UserModel.exists({ email })) {
       throw new AppError("Email already in use", BAD_REQUEST)
     }
 
     const user = await UserModel.create({ email, password, name })
     const objectId = user._id as unknown as Types.ObjectId
 
+    // include `role` in the payload
     const token = jwt.sign(
-      { sub: objectId.toString() }, 
+      { sub: objectId.toString(), role: user.role },
       jwtConfig.secret,
       jwtConfig.accessToken.options
     )
@@ -52,7 +53,7 @@ export class AuthService {
     const objectId = user._id as unknown as Types.ObjectId
 
     const token = jwt.sign(
-      { sub: objectId.toString() },
+      { sub: objectId.toString(), role: user.role },
       jwtConfig.secret,
       jwtConfig.accessToken.options
     )
@@ -61,7 +62,7 @@ export class AuthService {
   }
 
   static logout(authorizationHeader?: string): void {
-    if (!authorizationHeader || !authorizationHeader.startsWith("Bearer ")) {
+    if (!authorizationHeader?.startsWith("Bearer ")) {
       throw new AppError("No token provided", UNAUTHORIZED)
     }
     const token = authorizationHeader.split(" ")[1]

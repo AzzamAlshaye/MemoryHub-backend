@@ -4,21 +4,24 @@ import { signup, signin, signout } from "../controllers/auth.controller"
 import { authenticate } from "../middleware/auth.middleware"
 const router = Router()
 // signUp-router
-router.post("/signup",
+router.post(
+  "/signup",
   [
     body("email").isEmail().withMessage("Valid email required"),
     body("password").isLength({ min: 8 }).withMessage("Password ≥8 chars"),
   ],
-  signup)
+  signup
+)
 // signIn-router
-router.post("/login",
-      [
+router.post(
+  "/signin",
+  [
     body("email").isEmail().withMessage("Valid email required"),
     body("password").notEmpty().withMessage("Password is required"),
   ],
   signin
 )
 // signOut-router
-router.post("/logout", authenticate, signout)
+router.post("/signout", authenticate, signout)
 
 export default router
