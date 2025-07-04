@@ -8,8 +8,8 @@ export class PinService {
     return PinModel.create(data)
   }
 
-  static getById(id: string): Promise<PinDocument | null> {
-    return PinModel.findById(id).exec()
+  static async getById(id: string): Promise<PinDocument | null> {
+    return PinModel.findById(id).populate("owner", "name avatar").exec()
   }
 
   static update(
@@ -43,6 +43,9 @@ export class PinService {
         { privacy: "private", owner: new Types.ObjectId(userId) },
         { privacy: "group", groupId: { $in: groupIds } },
       ],
-    }).exec()
+    })
+      .populate("owner", "name avatar")
+      .sort({ createdAt: -1 })
+      .exec()
   }
 }
