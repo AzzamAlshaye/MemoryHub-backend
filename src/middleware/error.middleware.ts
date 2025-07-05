@@ -1,11 +1,11 @@
-// src/utils/error.middleware.ts
+// src/middleware/error.middleware.ts
 import { ErrorRequestHandler } from "express"
 import { AppError } from "../utils/error"
+import { dev } from "../utils/helpers"
 
 export const errorHandler: ErrorRequestHandler = (err, req, res, next) => {
-  console.error(err) // Log it
+  console.error("🔥 Error caught:", err)
 
-  // 1) Catch any 401 (AppError or library)
   const is401 =
     (err as any).status === 401 ||
     (err as any).statusCode === 401 ||
@@ -14,12 +14,11 @@ export const errorHandler: ErrorRequestHandler = (err, req, res, next) => {
   if (is401) {
     res.status(401).json({
       success: false,
-      message: "Unauthorized: invalid or missing token. Please log in.",
+      message: err.message || "Unauthorized: invalid or missing token.",
     })
     return
   }
 
-  // 2) Your AppError for other statuses
   if (err instanceof AppError) {
     res.status(err.statusCode).json({
       success: false,
@@ -28,9 +27,10 @@ export const errorHandler: ErrorRequestHandler = (err, req, res, next) => {
     return
   }
 
-  // 3) Fallback 500
+  // Fallback 500: include message & stack in dev
   res.status(500).json({
     success: false,
-    message: "Something went wrong!",
+    message: dev ? err.message : "Something went wrong!",
+    ...(dev ? { stack: err.stack } : {}),
   })
 }
