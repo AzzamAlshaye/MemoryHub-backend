@@ -4,11 +4,13 @@ import { authenticate } from "../middleware/auth.middleware"
 import { CommentController } from "../controllers/comment.controller"
 
 const router = Router()
-router.use(authenticate)
 
-router.post("/", CommentController.create)
+// ── Public: list comments for a pin ───────────────────────
 router.get("/pin/:pinId", CommentController.listByPin)
-router.put("/:id", CommentController.update)
-router.delete("/:id", CommentController.delete)
+
+// ── Protected: create, update, delete ────────────────────
+router.post("/", authenticate, CommentController.create)
+router.put("/:id", authenticate, CommentController.update)
+router.delete("/:id", authenticate, CommentController.delete)
 
 export default router

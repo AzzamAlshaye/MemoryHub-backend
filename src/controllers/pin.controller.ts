@@ -42,7 +42,7 @@ export class PinController {
       }
       const location = { lat, lng }
 
-      // Normalize privacy enum to lowercase and assert type
+      // Normalize privacy enum
       const rawPrivacy = String(req.body.privacy || "public")
       const privacy = rawPrivacy.toLowerCase() as "public" | "private" | "group"
 
@@ -58,14 +58,12 @@ export class PinController {
         images?: Express.Multer.File[]
       }
 
-      // Prepare media URLs with defaults
       let imageUrls: string[] = []
-      let videoUrl: string = ""
+      let videoUrl = ""
 
       if (files.video?.[0]) {
         const vRes = await uploadBuffer(files.video[0].buffer, "pins", "video")
         videoUrl = vRes.secure_url
-        console.log("[PinController.create] uploaded video url=", videoUrl)
       }
 
       if (files.images?.length) {
@@ -74,10 +72,8 @@ export class PinController {
             uploadBuffer(f.buffer, "pins", "image").then((r) => r.secure_url)
           )
         )
-        console.log("[PinController.create] uploaded image urls=", imageUrls)
       }
 
-      // Create the pin with full media object
       const pin = await PinService.create({
         owner: ownerId,
         groupId,
@@ -99,7 +95,7 @@ export class PinController {
     }
   }
 
-  // GET /pins
+  // GET /pins with filter & search
   static async getAll(
     req: Request,
     res: Response,
@@ -107,12 +103,37 @@ export class PinController {
   ): Promise<void> {
     try {
       console.log("[PinController.getAll] query:", req.query)
-      // Optional userId: only if authenticated
+      // Optional userId for permission-based visibility
       const userId = (req as any).user?.id
-      console.log("[PinController.getAll] userId:", userId)
+      // Extract filter & search
+      const filter = String(req.query.filter || "public").toLowerCase()
+      const search = String(req.query.search || "")
+      console.log(
+        `[PinController.getAll] userId=${userId}, filter=${filter}, search=${search}`
+      )
 
-      const pins = await PinService.getVisibleForUser(userId)
-      console.log("[PinController.getAll] found pins count=", pins.length)
+      // Get all pins visible to user
+      let pins = await PinService.getVisibleForUser(userId)
+
+      // Apply privacy filter
+      if (["public", "private", "group"].includes(filter)) {
+        pins = pins.filter((pin) => pin.privacy === filter)
+      }
+
+      // Apply search term
+      if (search) {
+        const term = search.toLowerCase()
+        pins = pins.filter((pin) => {
+          const titleMatch = pin.title?.toLowerCase().includes(term) ?? false
+          const descMatch =
+            pin.description?.toLowerCase().includes(term) ?? false
+          return titleMatch || descMatch
+        })
+      }
+
+      console.log(
+        `[PinController.getAll] returning ${pins.length} pins after filtering`
+      )
       res.json(pins)
     } catch (err) {
       console.error("[PinController.getAll] Error:", err)
@@ -127,12 +148,8 @@ export class PinController {
     next: NextFunction
   ): Promise<void> {
     try {
-      console.log("[PinController.getById] params:", req.params)
       const pin = await PinService.getById(req.params.id)
       if (!pin) {
-        console.warn(
-          `[PinController.getById] Pin not found id=${req.params.id}`
-        )
         res.sendStatus(404)
         return
       }
@@ -150,9 +167,6 @@ export class PinController {
     next: NextFunction
   ): Promise<void> {
     try {
-      console.log("[PinController.update] params:", req.params)
-      console.log("[PinController.update] body:", req.body)
-
       const updateData: any = {
         title: req.body.title,
         description: req.body.description,
@@ -164,11 +178,9 @@ export class PinController {
 
       const updated = await PinService.update(req.params.id, updateData)
       if (!updated) {
-        console.warn(`[PinController.update] Pin not found id=${req.params.id}`)
         res.sendStatus(404)
         return
       }
-      console.log(`[PinController.update] updated pin id=${req.params.id}`)
       res.json(updated)
     } catch (err) {
       console.error("[PinController.update] Error:", err)
@@ -183,7 +195,6 @@ export class PinController {
     next: NextFunction
   ): Promise<void> {
     try {
-      console.log("[PinController.delete] id=", req.params.id)
       await PinService.delete(req.params.id)
       res.sendStatus(204)
     } catch (err) {
