@@ -1,15 +1,15 @@
+// src/models/like.model.ts
 import { Schema, model, Document, Types } from "mongoose"
-// create interface
+
 export interface LikeDocument extends Document {
-  _id: Types.ObjectId 
-  user: Types.ObjectId 
-  targetType: "pin" | "comment" 
-  targetId: Types.ObjectId 
-  type: "like" | "dislike" 
+  user: Types.ObjectId
+  targetType: "pin" | "comment"
+  targetId: Types.ObjectId
+  type: "like" | "dislike"
   createdAt: Date
   updatedAt: Date
 }
-// create schema
+
 const likeSchema = new Schema<LikeDocument>(
   {
     user: {
@@ -36,7 +36,7 @@ const likeSchema = new Schema<LikeDocument>(
     timestamps: true,
     toJSON: {
       virtuals: true,
-      transform(doc, ret) {
+      transform(_doc, ret) {
         ret.id = ret._id.toString()
         delete ret._id
         delete ret.__v
@@ -44,9 +44,8 @@ const likeSchema = new Schema<LikeDocument>(
     },
   }
 )
-// get by id
-likeSchema.virtual("id").get(function (this: LikeDocument) {
-  return this._id.toHexString()
-})
+
+// **Key addition**: ensure each user can only react once per target
+likeSchema.index({ user: 1, targetType: 1, targetId: 1 }, { unique: true })
 
 export const LikeModel = model<LikeDocument>("Like", likeSchema)
