@@ -7,7 +7,7 @@ import { CommentService } from "../services/comment.service"
 
 export class LikeController {
   // POST /likes
-  static create: RequestHandler = async (req, res, next) => {
+  static create: RequestHandler = async (req, res, next): Promise<void> => {
     try {
       const userId = new Types.ObjectId((req as any).user.id)
       const { targetType, targetId, type } = req.body
@@ -17,7 +17,7 @@ export class LikeController {
         return
       }
 
-      // Validate target exists & privacy
+      // Validate target & privacy...
       if (targetType === "pin") {
         const pin = await PinService.getById(targetId)
         if (!pin) {
@@ -43,7 +43,7 @@ export class LikeController {
         }
       }
 
-      // Try to find existing reaction
+      // Upsert reaction
       let reaction = await LikeModel.findOne({
         user: userId,
         targetType,
@@ -52,18 +52,15 @@ export class LikeController {
 
       if (reaction) {
         if (reaction.type === type) {
-          // same reaction: no-op
           res.status(200).json(reaction)
           return
         }
-        // switch reaction
         reaction.type = type
         await reaction.save()
         res.status(200).json(reaction)
         return
       }
 
-      // no existing reaction: create new
       reaction = await LikeModel.create({
         user: userId,
         targetType,
@@ -71,31 +68,53 @@ export class LikeController {
         type,
       })
       res.status(201).json(reaction)
+      return
     } catch (err: any) {
-      // if duplicate-key error somehow sneaks through
       if (err.code === 11000) {
         res.status(409).json({ message: "Already reacted" })
-      } else {
-        next(err)
+        return
       }
+      next(err)
     }
   }
 
   // GET /likes/:targetType/:targetId
-  static list: RequestHandler = async (req, res, next) => {
+  static list: RequestHandler = async (req, res, next): Promise<void> => {
     try {
       const { targetType, targetId } = req.params
       const all = await LikeModel.find({ targetType, targetId })
       const likes = all.filter((r) => r.type === "like").length
       const dislikes = all.filter((r) => r.type === "dislike").length
       res.json({ likes, dislikes })
+      return
+    } catch (err) {
+      next(err)
+    }
+  }
+
+  // GET /likes/:targetType/:targetId/me
+  static getMyReaction: RequestHandler = async (
+    req,
+    res,
+    next
+  ): Promise<void> => {
+    try {
+      const userId = new Types.ObjectId((req as any).user.id)
+      const { targetType, targetId } = req.params
+      const reaction = await LikeModel.findOne({
+        user: userId,
+        targetType,
+        targetId,
+      })
+      res.json(reaction ? { type: reaction.type } : null)
+      return
     } catch (err) {
       next(err)
     }
   }
 
   // DELETE /likes/:id
-  static delete: RequestHandler = async (req, res, next) => {
+  static delete: RequestHandler = async (req, res, next): Promise<void> => {
     try {
       const reaction = await LikeModel.findById(req.params.id)
       if (!reaction) {
@@ -111,6 +130,7 @@ export class LikeController {
       }
       await reaction.deleteOne()
       res.sendStatus(204)
+      return
     } catch (err) {
       next(err)
     }

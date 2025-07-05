@@ -45,7 +45,7 @@ const likeSchema = new Schema<LikeDocument>(
   }
 )
 
-// **Key addition**: ensure each user can only react once per target
+// ensure each user can only react once per target
 likeSchema.index({ user: 1, targetType: 1, targetId: 1 }, { unique: true })
 
 export const LikeModel = model<LikeDocument>("Like", likeSchema)
