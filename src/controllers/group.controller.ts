@@ -1,174 +1,204 @@
 // src/controllers/group.controller.ts
-import { Request, Response, NextFunction, RequestHandler } from "express"
-import { Types } from "mongoose"
+import { Request, Response, NextFunction } from "express"
 import { GroupService } from "../services/group.service"
-import { AppError } from "../utils/error"
-import {
-  CREATED,
-  NO_CONTENT,
-  NOT_FOUND,
-  BAD_REQUEST,
-  UNAUTHORIZED,
-} from "../utils/http-status"
-import { GroupModel } from "../models/group.model"
+import cloudinary from "../config/cloudinary"
+import streamifier from "streamifier"
 
-interface AuthUser {
-  id: string
-  role: string
-}
-
-/** Ensure authenticated user is present */
-function ensureUser(req: Request): asserts req is Request & { user: AuthUser } {
-  if (!req.user) throw new AppError("Authentication required", UNAUTHORIZED)
+async function uploadGroupAvatar(buffer: Buffer) {
+  return new Promise<any>((resolve, reject) => {
+    const uploadStream = cloudinary.uploader.upload_stream(
+      { folder: "group-avatars", resource_type: "image" },
+      (err, val) => (err ? reject(err) : resolve(val))
+    )
+    streamifier.createReadStream(buffer).pipe(uploadStream)
+  })
 }
 
 export class GroupController {
-  /** POST /groups */
-  static create: RequestHandler = async (req, res, next) => {
+  // POST /groups
+  static async create(
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> {
     try {
-      ensureUser(req)
-      const grp = await GroupService.create(req.body, req.user.id)
-      res.status(CREATED).json(grp)
+      const creatorId = (req as any).user.id
+      const group = await GroupService.create(req.body, creatorId)
+      res.status(201).json(group)
     } catch (err) {
       next(err)
     }
   }
 
-  /** GET /groups */
-  static getAll: RequestHandler = async (req, res, next) => {
+  // GET /groups
+  static async getAll(
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> {
     try {
-      ensureUser(req)
-      const groups = await GroupService.getForUser(req.user.id)
+      const userId = (req as any).user.id
+      const groups = await GroupService.getForUser(userId)
       res.json(groups)
     } catch (err) {
       next(err)
     }
   }
 
-  /** GET /groups/:id */
-  static getById: RequestHandler = async (req, res, next) => {
+  // GET /groups/:id
+  static async getById(
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> {
     try {
-      ensureUser(req)
-      const grp = await GroupService.getById(req.params.id)
-      if (!grp) throw new AppError("Group not found", NOT_FOUND)
-      if (!(await GroupService.isMember(grp.id, req.user.id))) {
-        throw new AppError("Not authorized", UNAUTHORIZED)
-      }
-      res.json(grp)
-    } catch (err) {
-      next(err)
-    }
-  }
-
-  /** PATCH /groups/:id/avatar */
-  static uploadAvatar: RequestHandler = async (req, res, next) => {
-    try {
-      ensureUser(req)
-      const file = (req as Request & { file?: { path?: string } }).file
-      const url = file?.path ?? ""
-      const updated = await GroupService.update(req.params.id, { avatar: url })
-      res.json(updated)
-    } catch (err) {
-      next(err)
-    }
-  }
-
-  /** PUT /groups/:id */
-  static update: RequestHandler = async (req, res, next) => {
-    try {
-      ensureUser(req)
-      const updated = await GroupService.update(req.params.id, req.body)
-      if (!updated) throw new AppError("Group not found", NOT_FOUND)
-      res.json(updated)
-    } catch (err) {
-      next(err)
-    }
-  }
-
-  /** DELETE /groups/:id */
-  static delete: RequestHandler = async (req, res, next) => {
-    try {
-      ensureUser(req)
-      const deleted = await GroupService.delete(req.params.id)
-      if (!deleted) throw new AppError("Group not found", NOT_FOUND)
-      res.sendStatus(NO_CONTENT)
-    } catch (err) {
-      next(err)
-    }
-  }
-
-  /** POST /groups/:id/invite */
-  static invite: RequestHandler = async (req, res, next) => {
-    try {
-      ensureUser(req)
-      // only members can invite
-      if (!(await GroupService.isMember(req.params.id, req.user.id))) {
-        throw new AppError("Only group members can invite", UNAUTHORIZED)
-      }
-      const group = await GroupService.generateInviteToken(req.params.id)
-      if (!group) throw new AppError("Group not found", NOT_FOUND)
-
-      const inviteLink = `${req.protocol}://${req.get("host")}/groups/${
-        group.id
-      }/join?token=${group.inviteToken}`
-
-      res.json({ inviteLink })
-    } catch (err) {
-      next(err)
-    }
-  }
-
-  /** POST /groups/:id/join */
-  static join: RequestHandler = async (req, res, next) => {
-    try {
-      const { id } = req.params
-      const token = String(req.query.token || "")
-
-      const group = await GroupModel.findOne({ _id: id, inviteToken: token })
+      const group = await GroupService.getById(req.params.id)
       if (!group) {
-        throw new AppError("Invalid or expired invite token", BAD_REQUEST)
+        res.sendStatus(404)
+        return
       }
-
-      ensureUser(req)
-      const updated = await GroupService.joinGroup(id, req.user.id)
-      res.json(updated)
+      res.json(group)
     } catch (err) {
       next(err)
     }
   }
 
-  /** POST /groups/:id/kick/:memberId */
-  static kickMember: RequestHandler = async (req, res, next) => {
+  // PUT /groups/:id
+  static async update(
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> {
     try {
-      ensureUser(req)
-      const { id, memberId } = req.params
-      if (!(await GroupService.isAdmin(id, req.user.id))) {
-        throw new AppError("Admin privileges required", UNAUTHORIZED)
-      }
-      const updated = await GroupService.kickMember(id, memberId)
-      if (!updated) throw new AppError("Group not found", NOT_FOUND)
-      res.json(updated)
-    } catch (err) {
-      next(err)
-    }
-  }
-
-  /** POST /groups/:id/promote/:memberId */
-  static promoteMember: RequestHandler = async (req, res, next) => {
-    try {
-      ensureUser(req)
-      const { id, memberId } = req.params
-      if (!(await GroupService.isAdmin(id, req.user.id))) {
-        throw new AppError("Admin privileges required", UNAUTHORIZED)
-      }
-      const updated = await GroupService.promoteMember(id, memberId)
+      const updated = await GroupService.update(req.params.id, req.body)
       if (!updated) {
-        throw new AppError(
-          "Group not found or user is not a member",
-          BAD_REQUEST
-        )
+        res.sendStatus(404)
+        return
       }
       res.json(updated)
+    } catch (err) {
+      next(err)
+    }
+  }
+
+  // DELETE /groups/:id
+  static async delete(
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> {
+    try {
+      await GroupService.delete(req.params.id)
+      res.sendStatus(204)
+    } catch (err) {
+      next(err)
+    }
+  }
+
+  // PATCH /groups/:id/avatar
+  static async uploadAvatar(
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> {
+    try {
+      const file = (req as any).file as Express.Multer.File | undefined
+      if (!file) {
+        res.status(400).json({ error: "No file uploaded" })
+        return
+      }
+      const result = await uploadGroupAvatar(file.buffer)
+      const updated = await GroupService.update(req.params.id, {
+        avatar: result.secure_url,
+      })
+      if (!updated) {
+        res.sendStatus(404)
+        return
+      }
+      res.json({ url: result.secure_url, public_id: result.public_id })
+    } catch (err) {
+      next(err)
+    }
+  }
+
+  // POST /groups/:id/invite
+  static async invite(
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> {
+    try {
+      const updated = await GroupService.generateInviteToken(req.params.id)
+      if (!updated) {
+        res.sendStatus(404)
+        return
+      }
+      res.json({ inviteToken: updated.inviteToken })
+    } catch (err) {
+      next(err)
+    }
+  }
+
+  // POST /groups/:id/join?token=…
+  static async join(
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> {
+    try {
+      const token = req.query.token as string
+      const group = await GroupService.getById(req.params.id)
+      if (!group || group.inviteToken !== token) {
+        res.status(403).json({ error: "Invalid invite token" })
+        return
+      }
+      const joined = await GroupService.joinGroup(
+        req.params.id,
+        (req as any).user.id
+      )
+      res.json(joined)
+    } catch (err) {
+      next(err)
+    }
+  }
+
+  // POST /groups/:id/kick/:memberId
+  static async kickMember(
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> {
+    try {
+      const kicked = await GroupService.kickMember(
+        req.params.id,
+        req.params.memberId
+      )
+      if (!kicked) {
+        res.sendStatus(404)
+        return
+      }
+      res.json(kicked)
+    } catch (err) {
+      next(err)
+    }
+  }
+
+  // POST /groups/:id/promote/:memberId
+  static async promoteMember(
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> {
+    try {
+      const promoted = await GroupService.promoteMember(
+        req.params.id,
+        req.params.memberId
+      )
+      if (!promoted) {
+        res.sendStatus(404)
+        return
+      }
+      res.json(promoted)
     } catch (err) {
       next(err)
     }
