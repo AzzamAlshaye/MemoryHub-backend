@@ -1,3 +1,4 @@
+// src/models/group.model.ts
 import { Schema, model, Document, Types } from "mongoose"
 
 export interface GroupDocument extends Document {
@@ -17,7 +18,12 @@ const groupSchema = new Schema<GroupDocument>(
   {
     name: { type: String, required: true },
     description: String,
-    avatar: { type: String, default: "" },
+    avatar: {
+      type: String,
+      trim: true,
+      default:
+        "https://res.cloudinary.com/dkh3l9gqe/image/upload/v1751740685/assets_task_01jzdxwr56etasa8zbk09j6rtg_1751740502_img_1_k5adfo.webp",
+    },
     admins: [{ type: Schema.Types.ObjectId, ref: "User", required: true }],
     members: [{ type: Schema.Types.ObjectId, ref: "User", required: true }],
     inviteToken: String,
