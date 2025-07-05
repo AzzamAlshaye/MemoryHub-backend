@@ -1,4 +1,3 @@
-// src/models/pin.model.ts
 import { Schema, model, Document, Types } from "mongoose"
 
 export interface PinDocument extends Document {
@@ -11,6 +10,10 @@ export interface PinDocument extends Document {
   }
   owner: Types.ObjectId
   groupId?: Types.ObjectId
+  media: {
+    images: string[]
+    video: string
+  }
   createdAt: Date
   updatedAt: Date
 }
@@ -39,6 +42,11 @@ const pinSchema = new Schema<PinDocument>(
         // `this` is the document
         return (this as PinDocument).privacy === "group"
       },
+    },
+
+    media: {
+      images: { type: [String], default: [] },
+      video: { type: String, default: "" },
     },
   },
   { timestamps: true }
