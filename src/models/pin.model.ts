@@ -1,3 +1,4 @@
+// src/models/pin.model.ts
 import { Schema, model, Document, Types } from "mongoose"
 
 export interface PinDocument extends Document {
@@ -45,7 +46,12 @@ const pinSchema = new Schema<PinDocument>(
     },
 
     media: {
-      images: { type: [String], default: [] },
+      images: {
+        type: [String],
+        default: [
+          "https://res.cloudinary.com/dkh3l9gqe/image/upload/v1751740691/assets_task_01jzdy0174fymrtq28cvzg3c14_1751740612_img_0_xofplt.webp",
+        ],
+      },
       video: { type: String, default: "" },
     },
   },
