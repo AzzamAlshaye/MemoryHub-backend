@@ -1,224 +1,138 @@
 // src/controllers/pin.controller.ts
-
-import { Request, Response, NextFunction, RequestHandler } from "express"
-import { Types } from "mongoose"
+import { Request, Response, NextFunction } from "express"
 import { PinService } from "../services/pin.service"
-import { GroupService } from "../services/group.service"
-import { PinDocument } from "../models/pin.model"
+import cloudinary from "../config/cloudinary"
+import streamifier from "streamifier"
+import { Types } from "mongoose"
 
-interface AuthUser {
-  _id: Types.ObjectId
-  id: string
-  role: string
-}
-
-// Minimal file shape—only what we read from multer
-interface UploadedFile {
-  path?: string
-}
-
-/** Assert an authenticated user is present */
-function ensureUser(req: Request): asserts req is Request & { user: AuthUser } {
-  if (!req.user) {
-    throw new Error("Missing authenticated user")
-  }
-}
-
-/** Can this user view that pin? */
-async function canViewPin(
-  pin: PinDocument,
-  userId: string,
-  isAdmin: boolean
-): Promise<boolean> {
-  switch (pin.privacy) {
-    case "public":
-      return true
-    case "private":
-      return pin.owner.equals(new Types.ObjectId(userId)) || isAdmin
-    case "group":
-      return pin.groupId
-        ? await GroupService.isMember(pin.groupId.toString(), userId)
-        : false
-  }
-  return false
+async function uploadBuffer(
+  buffer: Buffer,
+  folder: string,
+  resource_type: "image" | "video"
+) {
+  return new Promise<any>((resolve, reject) => {
+    const stream = cloudinary.uploader.upload_stream(
+      { folder, resource_type },
+      (err, result) => (err ? reject(err) : resolve(result))
+    )
+    streamifier.createReadStream(buffer).pipe(stream)
+  })
 }
 
 export class PinController {
-  /** POST /pins */
-  static create: RequestHandler = async (req, res, next) => {
+  // POST /pins
+  static async create(
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> {
     try {
-      ensureUser(req)
+      const userId = (req as any).user.id
+      const ownerId = new Types.ObjectId(userId)
+      const groupId = new Types.ObjectId(req.body.groupId)
+      const { title, description, privacy } = req.body
+      const files =
+        ((req as any).files as {
+          video?: Express.Multer.File[]
+          images?: Express.Multer.File[]
+        }) || {}
+      const media: any = {}
 
-      const {
-        title,
-        description,
-        privacy,
-        latitude,
-        longitude,
-        groupId: rawGroupId,
-        ...extra
-      } = req.body as any
-
-      if (privacy === "group" && !rawGroupId) {
-        res.status(400).json({ message: "groupId is required for group pins" })
-        return
+      if (files.video?.[0]) {
+        const v = await uploadBuffer(files.video[0].buffer, "pins", "video")
+        media.video = { url: v.secure_url, public_id: v.public_id }
       }
 
-      const ownerId = req.user.id
-      const data: Partial<PinDocument> = {
-        title,
-        description,
-        privacy,
-        location: { lat: latitude!, lng: longitude! },
-        owner: new Types.ObjectId(ownerId),
-        ...extra,
-      }
-      if (rawGroupId) data.groupId = new Types.ObjectId(rawGroupId)
-
-      const files = (
-        req as Request & { files?: Record<string, UploadedFile[]> }
-      ).files
-      const videoUrl = files?.video?.[0]?.path ?? ""
-      const imageUrls = (files?.images ?? [])
-        .filter((f) => f.path)
-        .map((f) => f.path!)
-
-      data.media = { video: videoUrl, images: imageUrls }
-
-      const pin = await PinService.create(data)
-      res.status(201).json(pin)
-      return
-    } catch (err) {
-      next(err)
-    }
-  }
-
-  /** GET /pins */
-  static getAll: RequestHandler = async (req, res, next) => {
-    try {
-      ensureUser(req)
-      const uid = req.user.id
-      const visible = await PinService.getVisibleForUser(uid)
-      res.json(visible)
-      return
-    } catch (err) {
-      next(err)
-    }
-  }
-
-  /** GET /pins/:id */
-  static getById: RequestHandler = async (req, res, next) => {
-    try {
-      ensureUser(req)
-      const pin = await PinService.getById(req.params.id)
-      if (!pin) {
-        res.sendStatus(404)
-        return
-      }
-
-      const uid = req.user.id
-      const isAdmin = req.user.role === "admin"
-      if (!(await canViewPin(pin, uid, isAdmin))) {
-        res.status(403).json({ message: "Not authorized to view this pin" })
-        return
-      }
-
-      res.json(pin)
-      return
-    } catch (err) {
-      next(err)
-    }
-  }
-
-  /** PUT /pins/:id */
-  static update: RequestHandler = async (req, res, next) => {
-    try {
-      ensureUser(req)
-      const existing = await PinService.getById(req.params.id)
-      if (!existing) {
-        res.sendStatus(404)
-        return
-      }
-
-      const uid = req.user.id
-      const isAdmin = req.user.role === "admin"
-      let canUpdate = false
-      if (existing.privacy === "group" && existing.groupId) {
-        canUpdate = await GroupService.isMember(
-          existing.groupId.toString(),
-          uid
+      if (files.images?.length) {
+        media.images = await Promise.all(
+          files.images.map((f) =>
+            uploadBuffer(f.buffer, "pins", "image").then((r) => ({
+              url: r.secure_url,
+              public_id: r.public_id,
+            }))
+          )
         )
-      } else {
-        canUpdate = existing.owner.equals(new Types.ObjectId(uid)) || isAdmin
-      }
-      if (!canUpdate) {
-        res.status(403).json({ message: "Not authorized to update this pin" })
-        return
       }
 
-      const {
+      const pin = await PinService.create({
+        owner: ownerId,
+        groupId,
+        title,
+        description,
         privacy,
-        latitude,
-        longitude,
-        groupId: rawGroupId,
-        ...rest
-      } = req.body as any
-
-      if (privacy === "group" && !rawGroupId) {
-        res.status(400).json({ message: "groupId is required for group pins" })
-        return
-      }
-
-      const updateData: Partial<PinDocument> = { ...rest }
-      if (privacy) updateData.privacy = privacy
-      if (latitude !== undefined && longitude !== undefined) {
-        updateData.location = { lat: latitude, lng: longitude }
-      }
-      if (rawGroupId) updateData.groupId = new Types.ObjectId(rawGroupId)
-
-      const files = (
-        req as Request & { files?: Record<string, UploadedFile[]> }
-      ).files
-      if (files?.video?.length || files?.images?.length) {
-        const newVideo = files.video?.[0]?.path ?? existing.media.video
-        const newImages = files.images
-          ? [
-              ...existing.media.images,
-              ...files.images.filter((f) => f.path).map((f) => f.path!),
-            ]
-          : existing.media.images
-        updateData.media = { video: newVideo, images: newImages }
-      }
-
-      const updated = await PinService.update(req.params.id, updateData)
-      res.json(updated)
-      return
+        media,
+      })
+      res.status(201).json(pin)
     } catch (err) {
       next(err)
     }
   }
 
-  /** DELETE /pins/:id */
-  static delete: RequestHandler = async (req, res, next) => {
+  // GET /pins
+  static async getAll(
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> {
     try {
-      ensureUser(req)
+      const userId = (req as any).user.id
+      const pins = await PinService.getVisibleForUser(userId)
+      res.json(pins)
+    } catch (err) {
+      next(err)
+    }
+  }
+
+  // GET /pins/:id
+  static async getById(
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> {
+    try {
       const pin = await PinService.getById(req.params.id)
       if (!pin) {
         res.sendStatus(404)
         return
       }
+      res.json(pin)
+    } catch (err) {
+      next(err)
+    }
+  }
 
-      const uid = req.user.id
-      const isAdmin = req.user.role === "admin"
-      const isOwner = pin.owner.equals(new Types.ObjectId(uid))
-      if (!isOwner && !isAdmin) {
-        res.status(403).json({ message: "Not authorized to delete this pin" })
+  // PUT /pins/:id
+  static async update(
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> {
+    try {
+      const updateData: any = {
+        title: req.body.title,
+        description: req.body.description,
+        privacy: req.body.privacy,
+      }
+      const updated = await PinService.update(req.params.id, updateData)
+      if (!updated) {
+        res.sendStatus(404)
         return
       }
+      res.json(updated)
+    } catch (err) {
+      next(err)
+    }
+  }
 
+  // DELETE /pins/:id
+  static async delete(
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> {
+    try {
       await PinService.delete(req.params.id)
       res.sendStatus(204)
-      return
     } catch (err) {
       next(err)
     }
