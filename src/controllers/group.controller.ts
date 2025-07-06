@@ -16,11 +16,7 @@ async function uploadGroupAvatar(buffer: Buffer) {
 
 export class GroupController {
   // POST /groups
-  static async create(
-    req: Request,
-    res: Response,
-    next: NextFunction
-  ): Promise<void> {
+  static async create(req: Request, res: Response, next: NextFunction) {
     try {
       const creatorId = (req as any).user.id
       const group = await GroupService.create(req.body, creatorId)
@@ -30,14 +26,10 @@ export class GroupController {
     }
   }
 
-  // GET /groups
-  static async getAll(
-    req: Request,
-    res: Response,
-    next: NextFunction
-  ): Promise<void> {
+  // GET /groups  ← now protected!
+  static async getAll(req: Request, res: Response, next: NextFunction) {
     try {
-      const userId = (req as any).user.id
+      const userId = (req as any).user.id // always defined
       const groups = await GroupService.getForUser(userId)
       res.json(groups)
     } catch (err) {
@@ -46,11 +38,7 @@ export class GroupController {
   }
 
   // GET /groups/:id
-  static async getById(
-    req: Request,
-    res: Response,
-    next: NextFunction
-  ): Promise<void> {
+  static async getById(req: Request, res: Response, next: NextFunction) {
     try {
       const group = await GroupService.getById(req.params.id)
       if (!group) {
@@ -64,11 +52,7 @@ export class GroupController {
   }
 
   // PUT /groups/:id
-  static async update(
-    req: Request,
-    res: Response,
-    next: NextFunction
-  ): Promise<void> {
+  static async update(req: Request, res: Response, next: NextFunction) {
     try {
       const updated = await GroupService.update(req.params.id, req.body)
       if (!updated) {
@@ -82,11 +66,7 @@ export class GroupController {
   }
 
   // DELETE /groups/:id
-  static async delete(
-    req: Request,
-    res: Response,
-    next: NextFunction
-  ): Promise<void> {
+  static async delete(req: Request, res: Response, next: NextFunction) {
     try {
       await GroupService.delete(req.params.id)
       res.sendStatus(204)
@@ -96,11 +76,7 @@ export class GroupController {
   }
 
   // PATCH /groups/:id/avatar
-  static async uploadAvatar(
-    req: Request,
-    res: Response,
-    next: NextFunction
-  ): Promise<void> {
+  static async uploadAvatar(req: Request, res: Response, next: NextFunction) {
     try {
       const file = (req as any).file as Express.Multer.File | undefined
       if (!file) {
@@ -122,11 +98,7 @@ export class GroupController {
   }
 
   // POST /groups/:id/invite
-  static async invite(
-    req: Request,
-    res: Response,
-    next: NextFunction
-  ): Promise<void> {
+  static async invite(req: Request, res: Response, next: NextFunction) {
     try {
       const updated = await GroupService.generateInviteToken(req.params.id)
       if (!updated) {
@@ -140,11 +112,7 @@ export class GroupController {
   }
 
   // POST /groups/:id/join?token=…
-  static async join(
-    req: Request,
-    res: Response,
-    next: NextFunction
-  ): Promise<void> {
+  static async join(req: Request, res: Response, next: NextFunction) {
     try {
       const token = req.query.token as string
       const group = await GroupService.getById(req.params.id)
@@ -163,11 +131,7 @@ export class GroupController {
   }
 
   // POST /groups/:id/kick/:memberId
-  static async kickMember(
-    req: Request,
-    res: Response,
-    next: NextFunction
-  ): Promise<void> {
+  static async kickMember(req: Request, res: Response, next: NextFunction) {
     try {
       const kicked = await GroupService.kickMember(
         req.params.id,
@@ -184,11 +148,7 @@ export class GroupController {
   }
 
   // POST /groups/:id/promote/:memberId
-  static async promoteMember(
-    req: Request,
-    res: Response,
-    next: NextFunction
-  ): Promise<void> {
+  static async promoteMember(req: Request, res: Response, next: NextFunction) {
     try {
       const promoted = await GroupService.promoteMember(
         req.params.id,
