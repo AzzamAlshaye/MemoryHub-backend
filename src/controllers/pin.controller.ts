@@ -4,7 +4,6 @@ import cloudinary from "../config/cloudinary"
 import streamifier from "streamifier"
 import { Types } from "mongoose"
 
-// Helper to upload buffer to Cloudinary and return secure_url
 async function uploadBuffer(
   buffer: Buffer,
   folder: string,
@@ -20,36 +19,22 @@ async function uploadBuffer(
 }
 
 export class PinController {
-  // POST /pins
-  static async create(
-    req: Request,
-    res: Response,
-    next: NextFunction
-  ): Promise<void> {
+  static async create(req: Request, res: Response, next: NextFunction) {
     try {
-      console.log("[PinController.create] user:", (req as any).user)
-      console.log("[PinController.create] body:", req.body)
-      console.log("[PinController.create] files:", (req as any).files)
-
       const userId = (req as any).user.id
       const ownerId = new Types.ObjectId(userId)
 
-      // Parse and validate location
       const lat = parseFloat(req.body.latitude)
       const lng = parseFloat(req.body.longitude)
-      if (isNaN(lat) || isNaN(lng)) {
-        throw new Error("Invalid or missing latitude/longitude")
-      }
+      if (isNaN(lat) || isNaN(lng)) throw new Error("Invalid latitude/longitude")
       const location = { lat, lng }
 
-      // Normalize privacy enum
-      const rawPrivacy = String(req.body.privacy || "public")
-      const privacy = rawPrivacy.toLowerCase() as "public" | "private" | "group"
+      const privacy = String(req.body.privacy || "public").toLowerCase() as
+        | "public"
+        | "private"
+        | "group"
 
-      // Optional groupId
-      const groupId = req.body.groupId
-        ? new Types.ObjectId(req.body.groupId)
-        : undefined
+      const groupId = req.body.groupId ? new Types.ObjectId(req.body.groupId) : undefined
 
       const { title, description } = req.body
 
@@ -81,72 +66,44 @@ export class PinController {
         description,
         privacy,
         location,
-        media: {
-          images: imageUrls,
-          video: videoUrl,
-        },
+        media: { images: imageUrls, video: videoUrl },
       })
 
-      console.log("[PinController.create] created pin id=", pin._id)
       res.status(201).json(pin)
     } catch (err) {
-      console.error("[PinController.create] Error:", err)
       next(err)
     }
   }
 
-  // GET /pins with filter & search
-  static async getAll(
-    req: Request,
-    res: Response,
-    next: NextFunction
-  ): Promise<void> {
+  static async getAll(req: Request, res: Response, next: NextFunction) {
     try {
-      console.log("[PinController.getAll] query:", req.query)
-      // Optional userId for permission-based visibility
       const userId = (req as any).user?.id
-      // Extract filter & search
       const filter = String(req.query.filter || "public").toLowerCase()
       const search = String(req.query.search || "")
-      console.log(
-        `[PinController.getAll] userId=${userId}, filter=${filter}, search=${search}`
-      )
 
-      // Get all pins visible to user
       let pins = await PinService.getVisibleForUser(userId)
 
-      // Apply privacy filter
       if (["public", "private", "group"].includes(filter)) {
         pins = pins.filter((pin) => pin.privacy === filter)
       }
 
-      // Apply search term
       if (search) {
         const term = search.toLowerCase()
         pins = pins.filter((pin) => {
-          const titleMatch = pin.title?.toLowerCase().includes(term) ?? false
-          const descMatch =
-            pin.description?.toLowerCase().includes(term) ?? false
-          return titleMatch || descMatch
+          return (
+            pin.title?.toLowerCase().includes(term) ||
+            pin.description?.toLowerCase().includes(term)
+          )
         })
       }
 
-      console.log(
-        `[PinController.getAll] returning ${pins.length} pins after filtering`
-      )
       res.json(pins)
     } catch (err) {
-      console.error("[PinController.getAll] Error:", err)
       next(err)
     }
   }
 
-  // GET /pins/:id
-  static async getById(
-    req: Request,
-    res: Response,
-    next: NextFunction
-  ): Promise<void> {
+  static async getById(req: Request, res: Response, next: NextFunction) {
     try {
       const pin = await PinService.getById(req.params.id)
       if (!pin) {
@@ -155,17 +112,11 @@ export class PinController {
       }
       res.json(pin)
     } catch (err) {
-      console.error("[PinController.getById] Error:", err)
       next(err)
     }
   }
 
-  // PUT /pins/:id
-  static async update(
-    req: Request,
-    res: Response,
-    next: NextFunction
-  ): Promise<void> {
+  static async update(req: Request, res: Response, next: NextFunction) {
     try {
       const updateData: any = {
         title: req.body.title,
@@ -183,22 +134,26 @@ export class PinController {
       }
       res.json(updated)
     } catch (err) {
-      console.error("[PinController.update] Error:", err)
       next(err)
     }
   }
 
-  // DELETE /pins/:id
-  static async delete(
-    req: Request,
-    res: Response,
-    next: NextFunction
-  ): Promise<void> {
+  static async delete(req: Request, res: Response, next: NextFunction) {
     try {
       await PinService.delete(req.params.id)
       res.sendStatus(204)
     } catch (err) {
-      console.error("[PinController.delete] Error:", err)
+      next(err)
+    }
+  }
+
+
+  static async getMyPins(req: Request, res: Response, next: NextFunction) {
+    try {
+      const userId = (req as any).user.id
+      const pins = await PinService.getPinsByUser(userId)
+      res.json(pins)
+    } catch (err) {
       next(err)
     }
   }
