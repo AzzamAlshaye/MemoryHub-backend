@@ -1,23 +1,27 @@
 // src/routes/pin.routes.ts
+
 import { Router } from "express"
 import { authenticate } from "../middleware/auth.middleware"
+import { optionalAuthenticate } from "../middleware/optionalAuth.middleware"
 import { upload } from "../middleware/upload.middleware"
 import { PinController } from "../controllers/pin.controller"
+import { UserRole } from "../models/user.model"
 
 const router = Router()
 
-// ── PUBLIC ────────────────────────────────────────────────
-// list all (public) pins, or filter by type
-router.get("/", PinController.getAll)
-router.get("/:id", PinController.getById)
+// ── LISTING (public, private & group) ─────────────────────────
+// optionalAuthenticate will populate req.user if a valid Bearer token is sent,
+// but will not reject anonymous requests.
+router.get("/", optionalAuthenticate, PinController.getAll)
+router.get("/:id", optionalAuthenticate, PinController.getById)
 
-// ── PROTECTED ────────────────────────────────────────────
-// now only these require a valid token
+// ── PROTECTED MUTATIONS (create, update, delete) ───────────────
+// Only authenticated users with role=User may create/update/delete pins.
 
-// Create: up to 1 video + up to 10 images
 router.post(
   "/",
   authenticate,
+
   upload.fields([
     { name: "video", maxCount: 1 },
     { name: "images", maxCount: 10 },
@@ -28,6 +32,7 @@ router.post(
 router.put(
   "/:id",
   authenticate,
+
   upload.fields([
     { name: "video", maxCount: 1 },
     { name: "images", maxCount: 10 },
@@ -35,6 +40,11 @@ router.put(
   PinController.update
 )
 
-router.delete("/:id", authenticate, PinController.delete)
+router.delete(
+  "/:id",
+  authenticate,
+
+  PinController.delete
+)
 
 export default router
