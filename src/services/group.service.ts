@@ -1,34 +1,43 @@
+// src/services/group.service.ts
+
 import crypto from "crypto"
 import { GroupModel, GroupDocument } from "../models/group.model"
 import { Types } from "mongoose"
 
 export class GroupService {
+  /**
+   * Create a new group *and* generate an inviteToken immediately
+   */
   static async create(
     data: Partial<GroupDocument>,
     creatorId: string
   ): Promise<GroupDocument> {
     const objId = new Types.ObjectId(creatorId)
+    const inviteToken = crypto.randomBytes(16).toString("hex")
+
     return GroupModel.create({
       ...data,
       admins: [objId],
       members: [objId],
+      inviteToken,
     })
   }
 
   static getForUser(userId: string): Promise<GroupDocument[]> {
     return GroupModel.find({ members: userId }).exec()
   }
+
   static getById(id: string): Promise<GroupDocument | null> {
     return GroupModel.findById(id).exec()
   }
-  // member of group they can update
+
   static update(
     id: string,
     update: Partial<GroupDocument>
   ): Promise<GroupDocument | null> {
     return GroupModel.findByIdAndUpdate(id, update, { new: true }).exec()
   }
-  // delete by id
+
   static delete(id: string): Promise<GroupDocument | null> {
     return GroupModel.findByIdAndDelete(id).exec()
   }
@@ -41,7 +50,7 @@ export class GroupService {
       { new: true }
     ).exec()
   }
-  // join to group
+
   static async joinGroup(
     id: string,
     userId: string
