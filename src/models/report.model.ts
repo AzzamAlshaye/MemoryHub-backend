@@ -36,7 +36,8 @@ const reportSchema = new Schema<ReportDocument>(
     },
     status: {
       type: String,
-      enum: ["open", "resolved"],
+      // enum: ["open", "resolved"],
+      enum: ["open", "resolved", "dismissed"],
       default: "open",
     },
     resolutionReason: String,
