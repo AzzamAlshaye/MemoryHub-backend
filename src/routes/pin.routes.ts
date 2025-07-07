@@ -1,52 +1,15 @@
-// // src/routes/pin.routes.ts
-// import { Router } from "express"
-// import { authenticate } from "../middleware/auth.middleware"
-// import { upload } from "../middleware/upload.middleware"
-// import { PinController } from "../controllers/pin.controller"
-
-// const router = Router()
-
-// // ── PUBLIC ────────────────────────────────────────────────
-// // list all (public) pins, or filter by type
-// router.get("/", PinController.getAll)
-// router.get("/:id", PinController.getById)
-
-// // ── PROTECTED ────────────────────────────────────────────
-// // now only these require a valid token
-
-// // Create: up to 1 video + up to 10 images
-// router.post(
-//   "/",
-//   authenticate,
-//   upload.fields([
-//     { name: "video", maxCount: 1 },
-//     { name: "images", maxCount: 10 },
-//   ]),
-//   PinController.create
-// )
-
-// router.put(
-//   "/:id",
-//   authenticate,
-//   upload.fields([
-//     { name: "video", maxCount: 1 },
-//     { name: "images", maxCount: 10 },
-//   ]),
-//   PinController.update
-// )
-
-// router.delete("/:id", authenticate, PinController.delete)
-
-// export default router
-
+// src/routes/pin.routes.ts
 
 
 import { Router } from "express"
 import { authenticate } from "../middleware/auth.middleware"
+import { optionalAuthenticate } from "../middleware/optionalAuth.middleware"
 import { upload } from "../middleware/upload.middleware"
 import { PinController } from "../controllers/pin.controller"
+import { UserRole } from "../models/user.model"
 
 const router = Router()
+
 
 // PUBLIC
 router.get("/me", authenticate, PinController.getMyPins)
@@ -54,9 +17,11 @@ router.get("/", PinController.getAll)
 router.get("/:id", PinController.getById)
 
 // PROTECTED
+
 router.post(
   "/",
   authenticate,
+
   upload.fields([
     { name: "video", maxCount: 1 },
     { name: "images", maxCount: 10 },
@@ -67,6 +32,7 @@ router.post(
 router.put(
   "/:id",
   authenticate,
+
   upload.fields([
     { name: "video", maxCount: 1 },
     { name: "images", maxCount: 10 },
@@ -75,6 +41,12 @@ router.put(
 )
 
 
-router.delete("/:id", authenticate, PinController.delete)
+router.delete(
+  "/:id",
+  authenticate,
+
+  PinController.delete
+)
+
 
 export default router
