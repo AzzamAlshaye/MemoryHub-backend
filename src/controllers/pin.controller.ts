@@ -6,6 +6,7 @@ import { PinService } from "../services/pin.service"
 import cloudinary from "../config/cloudinary"
 import streamifier from "streamifier"
 
+
 interface CloudinaryUploadResult {
   secure_url: string
 }
@@ -26,12 +27,7 @@ async function uploadBuffer(
 }
 
 export class PinController {
-  // POST /pins
-  static async create(
-    req: Request,
-    res: Response,
-    next: NextFunction
-  ): Promise<void> {
+  static async create(req: Request, res: Response, next: NextFunction) {
     try {
       const rawUser = (req as any).user
       if (!rawUser?.id || !Types.ObjectId.isValid(rawUser.id)) {
@@ -62,6 +58,7 @@ export class PinController {
         return
       }
       const privacy = rawPrivacy as "public" | "private" | "group"
+
 
       let groupObjId: Types.ObjectId | undefined
       if (privacy === "group") {
@@ -103,8 +100,10 @@ export class PinController {
         title,
         description,
         privacy,
+
         location: { lat, lng },
         groupId: groupObjId,
+
         media: { images: imageUrls, video: videoUrl },
       })
 
@@ -114,16 +113,19 @@ export class PinController {
     }
   }
 
+
   // GET /pins
   static async getAll(
     req: Request,
     res: Response,
     next: NextFunction
   ): Promise<void> {
+
     try {
       const userId = (req as any).user?.id
       const filter = String(req.query.filter || "public").toLowerCase()
       const search = String(req.query.search || "")
+
         .trim()
         .toLowerCase()
       const groupIdQ = String(req.query.groupId || "")
@@ -132,17 +134,21 @@ export class PinController {
         `[PinController.getAll] params ▶ user=${userId}, filter=${filter}, search="${search}", groupId=${groupIdQ}`
       )
 
+
       let pins = await PinService.getVisibleForUser(userId)
       const initialCount = pins.length
       console.log(`[PinController.getAll] initial pins count: ${initialCount}`)
 
+
       // 1) privacy filter
+
       if (["public", "private", "group"].includes(filter)) {
         pins = pins.filter((p) => p.privacy === filter)
         console.log(
           `[PinController.getAll] after privacy="${filter}" count: ${pins.length}`
         )
       }
+
 
       // 2) text search
       if (search) {
@@ -170,12 +176,14 @@ export class PinController {
             pid = pid._id
           }
           return pid?.toString() === groupIdQ
+
         })
 
         console.log(
           `[PinController.getAll] after groupId="${groupIdQ}" count: ${pins.length}`
         )
       }
+
 
       // debug headers
       res.set("X-Debug-Initial-Count", String(initialCount))
@@ -188,12 +196,7 @@ export class PinController {
     }
   }
 
-  // GET /pins/:id
-  static async getById(
-    req: Request,
-    res: Response,
-    next: NextFunction
-  ): Promise<void> {
+  static async getById(req: Request, res: Response, next: NextFunction) {
     try {
       const pin = await PinService.getById(req.params.id)
       if (!pin) {
@@ -206,12 +209,7 @@ export class PinController {
     }
   }
 
-  // PUT /pins/:id
-  static async update(
-    req: Request,
-    res: Response,
-    next: NextFunction
-  ): Promise<void> {
+  static async update(req: Request, res: Response, next: NextFunction) {
     try {
       const rawPrivacy = String(req.body.privacy || "public").toLowerCase()
       if (!["public", "private", "group"].includes(rawPrivacy)) {
@@ -242,16 +240,24 @@ export class PinController {
     }
   }
 
-  // DELETE /pins/:id
-  static async delete(
-    req: Request,
-    res: Response,
-    next: NextFunction
-  ): Promise<void> {
+  static async delete(req: Request, res: Response, next: NextFunction) {
     try {
       await PinService.delete(req.params.id)
       res.sendStatus(204)
     } catch (err) {
+
+      next(err)
+    }
+  }
+
+
+  static async getMyPins(req: Request, res: Response, next: NextFunction) {
+    try {
+      const userId = (req as any).user.id
+      const pins = await PinService.getPinsByUser(userId)
+      res.json(pins)
+    } catch (err) {
+
       next(err)
     }
   }
