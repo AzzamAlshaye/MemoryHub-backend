@@ -30,6 +30,7 @@ router.patch(
 router.post("/:id/invite", authenticate, GroupController.invite)
 router.post("/:id/join", authenticate, GroupController.join)
 router.post("/:id/kick/:memberId", authenticate, GroupController.kickMember)
+router.post("/:id/leave", authenticate, GroupController.leaveGroup)
 router.post(
   "/:id/promote/:memberId",
   authenticate,

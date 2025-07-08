@@ -23,14 +23,32 @@ export class GroupService {
     })
   }
 
+  /**
+   * List all groups a given user belongs to
+   */
   static getForUser(userId: string): Promise<GroupDocument[]> {
     return GroupModel.find({ members: userId }).exec()
   }
 
+  /**
+   * Get a single group by ID, populating member profiles
+   */
   static getById(id: string): Promise<GroupDocument | null> {
-    return GroupModel.findById(id).exec()
+    return GroupModel.findById(id)
+      .populate({
+        path: "members",
+        select: "name email avatar joinedAt",
+      })
+      .populate({
+        path: "admins",
+        select: "_id",
+      })
+      .exec()
   }
 
+  /**
+   * Update group metadata
+   */
   static update(
     id: string,
     update: Partial<GroupDocument>
@@ -38,10 +56,16 @@ export class GroupService {
     return GroupModel.findByIdAndUpdate(id, update, { new: true }).exec()
   }
 
+  /**
+   * Delete a group
+   */
   static delete(id: string): Promise<GroupDocument | null> {
     return GroupModel.findByIdAndDelete(id).exec()
   }
 
+  /**
+   * Generate (or regenerate) the invite token
+   */
   static async generateInviteToken(id: string): Promise<GroupDocument | null> {
     const token = crypto.randomBytes(16).toString("hex")
     return GroupModel.findByIdAndUpdate(
@@ -51,6 +75,9 @@ export class GroupService {
     ).exec()
   }
 
+  /**
+   * Add a user to a group if they're not already a member
+   */
   static async joinGroup(
     id: string,
     userId: string
@@ -64,6 +91,9 @@ export class GroupService {
     return group
   }
 
+  /**
+   * Remove a member (or yourself) from a group
+   */
   static async kickMember(
     groupId: string,
     memberId: string
@@ -76,6 +106,9 @@ export class GroupService {
     return group
   }
 
+  /**
+   * Promote an existing member to admin
+   */
   static async promoteMember(
     groupId: string,
     memberId: string
@@ -90,11 +123,17 @@ export class GroupService {
     return group
   }
 
+  /**
+   * Check if a user is an admin
+   */
   static async isAdmin(groupId: string, userId: string): Promise<boolean> {
     const group = await GroupModel.findById(groupId)
     return !!group && group.admins.some((a) => a.toString() === userId)
   }
 
+  /**
+   * Check if a user is a group member
+   */
   static async isMember(groupId: string, userId: string): Promise<boolean> {
     const group = await GroupModel.findById(groupId)
     return !!group && group.members.some((m) => m.toString() === userId)
