@@ -1,8 +1,9 @@
-// src/controllers/user.controller.ts
 import { Request, Response, NextFunction } from "express"
 import { UserService } from "../services/user.service"
 import cloudinary from "../config/cloudinary"
 import streamifier from "streamifier"
+import { AppError } from "../utils/error"
+import { BAD_REQUEST } from "../utils/http-status"
 
 async function uploadAvatarBuffer(buffer: Buffer) {
   return new Promise<any>((resolve, reject) => {
@@ -15,6 +16,26 @@ async function uploadAvatarBuffer(buffer: Buffer) {
 }
 
 export class UserController {
+  // GET /users/:id/public
+  // Publicly returns only id, name, avatar
+  static async getPublicProfile(
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> {
+    try {
+      const { id } = req.params
+      const user = await UserService.getById(id)
+      if (!user) {
+        res.sendStatus(404)
+        return
+      }
+      res.json({ id: user.id, name: user.name, avatar: user.avatar })
+    } catch (err) {
+      next(err)
+    }
+  }
+
   // GET /users/me
   static async getSelf(
     req: Request,
@@ -90,7 +111,6 @@ export class UserController {
         res.sendStatus(404)
         return
       }
-
       res.json({ url: result.secure_url, public_id: result.public_id })
     } catch (err) {
       next(err)
@@ -182,7 +202,6 @@ export class UserController {
         res.sendStatus(404)
         return
       }
-
       res.json({ url: result.secure_url, public_id: result.public_id })
     } catch (err) {
       next(err)

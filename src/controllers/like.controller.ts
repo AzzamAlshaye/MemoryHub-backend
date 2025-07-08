@@ -1,4 +1,5 @@
 // src/controllers/like.controller.ts
+
 import { RequestHandler } from "express"
 import { Types } from "mongoose"
 import { LikeModel } from "../models/like.model"
@@ -7,7 +8,7 @@ import { CommentService } from "../services/comment.service"
 
 export class LikeController {
   // POST /likes
-  static create: RequestHandler = async (req, res, next): Promise<void> => {
+  static create: RequestHandler = async (req, res, next) => {
     try {
       const userId = new Types.ObjectId((req as any).user.id)
       const { targetType, targetId, type } = req.body
@@ -79,7 +80,7 @@ export class LikeController {
   }
 
   // GET /likes/:targetType/:targetId
-  static list: RequestHandler = async (req, res, next): Promise<void> => {
+  static list: RequestHandler = async (req, res, next) => {
     try {
       const { targetType, targetId } = req.params
       const all = await LikeModel.find({ targetType, targetId })
@@ -93,20 +94,27 @@ export class LikeController {
   }
 
   // GET /likes/:targetType/:targetId/me
-  static getMyReaction: RequestHandler = async (
-    req,
-    res,
-    next
-  ): Promise<void> => {
+  static getMyReaction: RequestHandler = async (req, res, next) => {
     try {
       const userId = new Types.ObjectId((req as any).user.id)
       const { targetType, targetId } = req.params
+
       const reaction = await LikeModel.findOne({
         user: userId,
         targetType,
         targetId,
       })
-      res.json(reaction ? { type: reaction.type } : null)
+
+      if (!reaction) {
+        res.json(null)
+        return
+      }
+
+      // return both the record's id and its type
+      res.json({
+        id: reaction.id, // virtual that maps to _id.toString()
+        type: reaction.type,
+      })
       return
     } catch (err) {
       next(err)
@@ -114,7 +122,7 @@ export class LikeController {
   }
 
   // DELETE /likes/:id
-  static delete: RequestHandler = async (req, res, next): Promise<void> => {
+  static delete: RequestHandler = async (req, res, next) => {
     try {
       const reaction = await LikeModel.findById(req.params.id)
       if (!reaction) {
