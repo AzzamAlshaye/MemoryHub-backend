@@ -1,3 +1,4 @@
+// src/controllers/user.controller.ts
 import { Request, Response, NextFunction } from "express"
 import { UserService } from "../services/user.service"
 import cloudinary from "../config/cloudinary"
@@ -16,8 +17,7 @@ async function uploadAvatarBuffer(buffer: Buffer) {
 }
 
 export class UserController {
-  // GET /users/:id/public
-  // Publicly returns only id, name, avatar
+  // Public: GET /users/:id/public
   static async getPublicProfile(
     req: Request,
     res: Response,
@@ -36,7 +36,7 @@ export class UserController {
     }
   }
 
-  // GET /users/me
+  // Authenticated: GET /users/me
   static async getSelf(
     req: Request,
     res: Response,
@@ -55,7 +55,7 @@ export class UserController {
     }
   }
 
-  // PUT /users/me
+  // Authenticated: PUT /users/me
   static async updateSelf(
     req: Request,
     res: Response,
@@ -74,7 +74,7 @@ export class UserController {
     }
   }
 
-  // DELETE /users/me
+  // Authenticated: DELETE /users/me
   static async deleteSelf(
     req: Request,
     res: Response,
@@ -89,7 +89,7 @@ export class UserController {
     }
   }
 
-  // PATCH /users/me/avatar
+  // Authenticated: PATCH /users/me/avatar
   static async uploadAvatar(
     req: Request,
     res: Response,
@@ -102,7 +102,6 @@ export class UserController {
         res.status(400).json({ error: "No file uploaded" })
         return
       }
-
       const result = await uploadAvatarBuffer(file.buffer)
       const updated = await UserService.updateSelf(userId, {
         avatar: result.secure_url,
@@ -117,7 +116,27 @@ export class UserController {
     }
   }
 
-  // Admin-only: GET /users
+  // ── Admin-only ─────────────────────────────────────────────
+
+  // POST /users
+  static async create(
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> {
+    try {
+      // body: { email, password, name, role?, avatar? }
+      const newUser = await UserService.create(req.body)
+      // strip out password hash
+      const userObj = newUser.toObject()
+      delete userObj.password
+      res.status(201).json(userObj)
+    } catch (err) {
+      next(err)
+    }
+  }
+
+  // GET /users
   static async getAll(
     req: Request,
     res: Response,
@@ -131,7 +150,7 @@ export class UserController {
     }
   }
 
-  // Admin-only: GET /users/:id
+  // GET /users/:id
   static async getById(
     req: Request,
     res: Response,
@@ -149,7 +168,7 @@ export class UserController {
     }
   }
 
-  // Admin-only: PUT /users/:id
+  // PUT /users/:id
   static async update(
     req: Request,
     res: Response,
@@ -167,7 +186,7 @@ export class UserController {
     }
   }
 
-  // Admin-only: DELETE /users/:id
+  // DELETE /users/:id
   static async delete(
     req: Request,
     res: Response,
@@ -181,7 +200,7 @@ export class UserController {
     }
   }
 
-  // Admin-only: PATCH /users/:id/avatar
+  // PATCH /users/:id/avatar
   static async uploadAvatarAdmin(
     req: Request,
     res: Response,
@@ -193,7 +212,6 @@ export class UserController {
         res.status(400).json({ error: "No file uploaded" })
         return
       }
-
       const result = await uploadAvatarBuffer(file.buffer)
       const updated = await UserService.update(req.params.id, {
         avatar: result.secure_url,

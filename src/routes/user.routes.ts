@@ -1,3 +1,4 @@
+// src/routes/user.routes.ts
 import { Router } from "express"
 import { authenticate, authorize } from "../middleware/auth.middleware"
 import { upload } from "../middleware/upload.middleware"
@@ -27,10 +28,13 @@ router.patch(
 )
 
 // ── Admin-only endpoints ────────────────────────────────────
+// Create new user
+router.post("/", authenticate, authorize("admin"), UserController.create)
+
+// List, get, update, delete, avatar for any user
 router.get("/", authenticate, authorize("admin"), UserController.getAll)
 router.get("/:id", authenticate, authorize("admin"), UserController.getById)
 router.put("/:id", authenticate, authorize("admin"), UserController.update)
-router.delete("/:id", authenticate, authorize("admin"), UserController.delete)
 router.patch(
   "/:id/avatar",
   authenticate,
@@ -38,5 +42,6 @@ router.patch(
   upload.single("avatar"),
   UserController.uploadAvatarAdmin
 )
+router.delete("/:id", authenticate, authorize("admin"), UserController.delete)
 
 export default router
