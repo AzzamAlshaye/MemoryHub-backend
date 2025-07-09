@@ -1,15 +1,14 @@
 // src/controllers/pin.controller.ts
-
 import { Request, Response, NextFunction } from "express"
 import { Types } from "mongoose"
 import { PinService } from "../services/pin.service"
 import cloudinary from "../config/cloudinary"
 import streamifier from "streamifier"
 
-
 interface CloudinaryUploadResult {
   secure_url: string
 }
+
 // Helper to upload a Buffer to Cloudinary
 async function uploadBuffer(
   buffer: Buffer,
@@ -26,7 +25,11 @@ async function uploadBuffer(
 }
 
 export class PinController {
-  static async create(req: Request, res: Response, next: NextFunction) {
+  static async create(
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> {
     try {
       const rawUser = (req as any).user
       if (!rawUser?.id || !Types.ObjectId.isValid(rawUser.id)) {
@@ -57,7 +60,6 @@ export class PinController {
         return
       }
       const privacy = rawPrivacy as "public" | "private" | "group"
-
 
       let groupObjId: Types.ObjectId | undefined
       if (privacy === "group") {
@@ -99,103 +101,68 @@ export class PinController {
         title,
         description,
         privacy,
-
         location: { lat, lng },
         groupId: groupObjId,
-
         media: { images: imageUrls, video: videoUrl },
       })
 
       res.status(201).json(pin)
+      return
     } catch (err) {
       next(err)
     }
   }
 
-
-  // GET /pins
   static async getAll(
     req: Request,
     res: Response,
     next: NextFunction
   ): Promise<void> {
-
     try {
       const userId = (req as any).user?.id
       const filter = String(req.query.filter || "public").toLowerCase()
       const search = String(req.query.search || "")
-
         .trim()
         .toLowerCase()
       const groupIdQ = String(req.query.groupId || "")
 
-      console.log(
-        `[PinController.getAll] params ▶ user=${userId}, filter=${filter}, search="${search}", groupId=${groupIdQ}`
-      )
-
-
       let pins = await PinService.getVisibleForUser(userId)
       const initialCount = pins.length
-      console.log(`[PinController.getAll] initial pins count: ${initialCount}`)
 
-
-      // 1) privacy filter
       if (["public", "private", "group"].includes(filter)) {
         pins = pins.filter((p) => p.privacy === filter)
-        console.log(
-          `[PinController.getAll] after privacy="${filter}" count: ${pins.length}`
-        )
       }
 
-
-      // 2) text search
       if (search) {
         pins = pins.filter(
           (p) =>
             p.title.toLowerCase().includes(search) ||
             (p.description?.toLowerCase().includes(search) ?? false)
         )
-        console.log(
-          `[PinController.getAll] after search="${search}" count: ${pins.length}`
-        )
       }
 
-      // 3) groupId filter (robustly handle both ObjectId and populated object)
       if (filter === "group" && Types.ObjectId.isValid(groupIdQ)) {
-        console.log(
-          `[PinController.getAll] before groupId filter, groupIds:`,
-          pins.map((p) => p.groupId)
-        )
-
         pins = pins.filter((p) => {
-          let pid = (p as any).groupId
-          // if populated, groupId might be an object with its own _id
-          if (pid && typeof pid === "object" && pid._id) {
-            pid = pid._id
-          }
+          let pid: any = (p as any).groupId
+          if (pid && typeof pid === "object" && pid._id) pid = pid._id
           return pid?.toString() === groupIdQ
-
         })
-
-        console.log(
-          `[PinController.getAll] after groupId="${groupIdQ}" count: ${pins.length}`
-        )
       }
 
-
-      // debug headers
       res.set("X-Debug-Initial-Count", String(initialCount))
       res.set("X-Debug-Final-Count", String(pins.length))
-
       res.json(pins)
+      return
     } catch (err) {
-      console.error("[PinController.getAll] ERROR:", err)
-
       next(err)
     }
   }
 
-  static async getById(req: Request, res: Response, next: NextFunction) {
+  static async getById(
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> {
     try {
       const pin = await PinService.getById(req.params.id)
       if (!pin) {
@@ -203,13 +170,19 @@ export class PinController {
         return
       }
       res.json(pin)
+      return
     } catch (err) {
       next(err)
     }
   }
 
-  static async update(req: Request, res: Response, next: NextFunction) {
+  static async update(
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> {
     try {
+      // 1) Validate privacy
       const rawPrivacy = String(req.body.privacy || "public").toLowerCase()
       if (!["public", "private", "group"].includes(rawPrivacy)) {
         res
@@ -217,46 +190,118 @@ export class PinController {
           .json({ message: "Privacy must be public, private, or group" })
         return
       }
+      const privacy = rawPrivacy as "public" | "private" | "group"
 
-      const updateData: Partial<{
-        title: string
-        description: string
-        privacy: "public" | "private" | "group"
-      }> = {
-        title: (req.body.title || "").trim(),
-        description: (req.body.description || "").trim(),
-        privacy: rawPrivacy as "public" | "private" | "group",
+      // 2) Title & description
+      const title = (req.body.title || "").trim()
+      if (!title) {
+        res.status(400).json({ message: "Title is required" })
+        return
+      }
+      const description = (req.body.description || "").trim()
+
+      // 3) Location
+      const lat = parseFloat(req.body.latitude)
+      const lng = parseFloat(req.body.longitude)
+      if (isNaN(lat) || isNaN(lng)) {
+        res.status(400).json({ message: "Invalid latitude/longitude" })
+        return
       }
 
+      // 4) Group ID
+      let groupObjId: Types.ObjectId | undefined
+      if (privacy === "group") {
+        const gid = (req.body.groupId || "").trim()
+        if (!Types.ObjectId.isValid(gid)) {
+          res
+            .status(400)
+            .json({ message: "Valid groupId is required for group privacy" })
+          return
+        }
+        groupObjId = new Types.ObjectId(gid)
+      }
+
+      // 5) Handle uploads
+      const files = (req as any).files as {
+        images?: Express.Multer.File[]
+        video?: Express.Multer.File[]
+      }
+
+      let videoUrl: string | undefined
+      if (files.video?.[0]) {
+        const { secure_url } = await uploadBuffer(
+          files.video[0].buffer,
+          "pins",
+          "video"
+        )
+        videoUrl = secure_url
+      }
+
+      const imageUrls: string[] = []
+      if (files.images?.length) {
+        for (const img of files.images.slice(0, 10)) {
+          const { secure_url } = await uploadBuffer(img.buffer, "pins", "image")
+          imageUrls.push(secure_url)
+        }
+      }
+
+      // 6) Build update payload
+      const updateData: Partial<PinService> = {
+        title,
+        description,
+        privacy,
+        location: { lat, lng },
+        ...(groupObjId ? { groupId: groupObjId } : {}),
+        ...(imageUrls.length || videoUrl
+          ? {
+              media: {
+                ...(imageUrls.length ? { images: imageUrls } : {}),
+                ...(videoUrl ? { video: videoUrl } : {}),
+              },
+            }
+          : {}),
+      }
+
+      // 7) Perform update
       const updated = await PinService.update(req.params.id, updateData)
       if (!updated) {
         res.sendStatus(404)
         return
       }
+
+      // **DO NOT** `return res.json(...)` — just call `res.json(...)` and then `return;`
       res.json(updated)
+      return
     } catch (err) {
       next(err)
     }
   }
 
-  static async delete(req: Request, res: Response, next: NextFunction) {
+  static async delete(
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> {
     try {
       await PinService.delete(req.params.id)
       res.sendStatus(204)
+      return
     } catch (err) {
-
       next(err)
     }
   }
 
-
-  static async getMyPins(req: Request, res: Response, next: NextFunction) {
+  static async getMyPins(
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> {
     try {
       const userId = (req as any).user.id
       const pins = await PinService.getPinsByUser(userId)
       res.json(pins)
+      return
     } catch (err) {
-
       next(err)
     }
   }

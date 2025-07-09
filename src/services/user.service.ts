@@ -1,10 +1,34 @@
 // src/services/user.service.ts
-
 import { UserDocument, UserModel } from "../models/user.model"
 import { AppError } from "../utils/error"
 import { BAD_REQUEST } from "../utils/http-status"
 
 export class UserService {
+  // Admin create
+  static async create(data: {
+    email: string
+    password: string
+    name: string
+    role?: string
+    avatar?: string
+  }): Promise<UserDocument> {
+    // 1) ensure email unique
+    const conflict = await UserModel.findOne({ email: data.email }).exec()
+    if (conflict) {
+      throw new AppError("Email already in use", BAD_REQUEST)
+    }
+
+    // 2) instantiate & save (pre-save hooks handle password hashing)
+    const user = new UserModel({
+      email: data.email,
+      password: data.password,
+      name: data.name,
+      role: data.role,
+      avatar: data.avatar,
+    })
+    return user.save()
+  }
+
   static getAll(): Promise<UserDocument[]> {
     return UserModel.find().exec()
   }
@@ -43,15 +67,9 @@ export class UserService {
       avatar?: string
     }
   ): Promise<UserDocument | null> {
-    // reuse same logic—admin vs self doesn’t change how we persist
     return this.update(id, update)
   }
 
-  /**
-   * Shared helper: applies changes to a UserDocument and saves.
-   * - Enforces unique email.
-   * - Triggers pre-save hook for hashing password.
-   */
   private static async applyUpdates(
     user: UserDocument,
     update: {
@@ -62,7 +80,6 @@ export class UserService {
       role?: string
     }
   ): Promise<UserDocument> {
-    // 1) Email uniqueness
     if (update.email && update.email !== user.email) {
       const conflict = await UserModel.findOne({ email: update.email }).exec()
       if (conflict && conflict._id.toString() !== user._id.toString()) {
@@ -70,24 +87,10 @@ export class UserService {
       }
       user.email = update.email
     }
-
-    // 2) Other fields
-    if (update.name !== undefined) {
-      user.name = update.name
-    }
-    if (update.avatar !== undefined) {
-      user.avatar = update.avatar
-    }
-    if (update.role !== undefined) {
-      user.role = update.role as any // admin-only; validated by controller
-    }
-
-    // 3) Password (hashing via pre-save hook)
-    if (update.password !== undefined) {
-      user.password = update.password
-    }
-
-    // 4) Persist
+    if (update.name !== undefined) user.name = update.name
+    if (update.avatar !== undefined) user.avatar = update.avatar
+    if (update.role !== undefined) user.role = update.role as any
+    if (update.password !== undefined) user.password = update.password
     return user.save()
   }
 
@@ -99,7 +102,7 @@ export class UserService {
     return this.delete(id)
   }
 
-  // helper used in auth.middleware
+  // for auth.middleware
   static getUserById(id: string): Promise<UserDocument | null> {
     return UserModel.findById(id).exec()
   }
